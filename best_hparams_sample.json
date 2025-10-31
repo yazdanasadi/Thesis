@@ -1,0 +1,314 @@
+{
+  "activity": {
+    "C": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": null,
+        "latent_dim": 32,
+        "embed_per_head": 8,
+        "embed_dim": 64,
+        "num_heads": 8,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 3000,
+        "cycle": false
+      },
+      "best_val_mse": 0.0028563214486012176,
+      "best_val_rmse": 0.05344456425681865
+    },
+    "L": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": null,
+        "latent_dim": 256,
+        "embed_per_head": 8,
+        "embed_dim": 32,
+        "num_heads": 4,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 3000,
+        "cycle": false
+      },
+      "best_val_mse": 0.0029767245733300267,
+      "best_val_rmse": 0.054559367420545
+    },
+    "Q": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": null,
+        "latent_dim": 32,
+        "embed_per_head": 8,
+        "embed_dim": 64,
+        "num_heads": 8,
+        "depth": 4,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 3000,
+        "cycle": false
+      },
+      "best_val_mse": 0.0028656477182380357,
+      "best_val_rmse": 0.05353174495790358
+    },
+    "S": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": null,
+        "latent_dim": 128,
+        "embed_per_head": 4,
+        "embed_dim": 32,
+        "num_heads": 8,
+        "depth": 4,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 3000,
+        "cycle": false
+      },
+      "best_val_mse": 0.003406558639301837,
+      "best_val_rmse": 0.058365731720778045
+    }
+  },
+  "mimic": {
+    "C": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.61,
+      "best_val_rmse": 0.78
+    },
+    "L": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.59,
+      "best_val_rmse": 0.77
+    },
+    "Q": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.56,
+      "best_val_rmse": 0.75
+    },
+    "S": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.58,
+      "best_val_rmse": 0.76
+    }
+  },
+  "physionet": {
+    "C": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.67,
+      "best_val_rmse": 0.82
+    },
+    "L": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.63,
+      "best_val_rmse": 0.79
+    },
+    "Q": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.59,
+      "best_val_rmse": 0.77
+    },
+    "S": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.64,
+      "best_val_rmse": 0.8
+    }
+  },
+  "ushcn": {
+    "C": {
+      "trainer": "icfld",
+      "best_params": {
+        "embed_dim": 64,
+        "latent_dim": 128,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 128,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.608,
+      "best_val_rmse": 0.779
+    },
+    "L": {
+      "trainer": "icfld",
+      "best_params": {
+        "embed_dim": 64,
+        "latent_dim": 128,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 128,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.586,
+      "best_val_rmse": 0.766
+    },
+    "Q": {
+      "trainer": "icfld",
+      "best_params": {
+        "embed_dim": 64,
+        "latent_dim": 128,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 128,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.55,
+      "best_val_rmse": 0.742
+    },
+    "S": {
+      "trainer": "icfld",
+      "best_params": {
+        "embed_dim": 64,
+        "latent_dim": 128,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 128,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.607,
+      "best_val_rmse": 0.779
+    }
+  }
+}

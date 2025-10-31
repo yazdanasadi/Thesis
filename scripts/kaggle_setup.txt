@@ -1,0 +1,29 @@
+Helper for Kaggle run:
+
+1. Upload repository assets (`scripts/optuna_icfld.py`, FLD/, FLD_ICC/, lib/, requirements.txt, etc.) to a Kaggle Notebook via GitHub clone or dataset.
+2. Enable internet access, select a GPU accelerator if needed.
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   pip install --no-cache-dir "torch==2.0.0+cu118" "torchvision==0.15.1+cu118" \
+       --extra-index-url https://download.pytorch.org/whl/cu118
+   ```
+4. Set MLflow tracking to a local folder and run the sweep:
+   ```python
+   import mlflow
+   mlflow.set_tracking_uri("file:./mlruns")
+   ```
+   ```bash
+   python scripts/optuna_icfld.py
+   ```
+5. Download the `mlruns/` directory (or exported CSVs) from `/kaggle/working` before ending the session so results persist.
+
+
+!python scripts/run_kaggle_optuna.py \
+    --data-root /kaggle/working/MasterThesis-1/data \
+    --plan C:activity:3000 L:activity:3000 Q:activity:3000 S:activity:3000 \
+    --trials 10 \
+    --epochs 100 \
+    --trainer fld \
+    --study-prefix fld_activity \
+    --no-install

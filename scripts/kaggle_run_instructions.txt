@@ -1,0 +1,61 @@
+Kaggle workflow cheat-sheet
+============================
+
+Setup
+-----
+- Upload the project repo (including this file) as a Kaggle dataset or attach it via GitHub.
+- Upload/attach the data bundle (expected layout: physionet/, mimic/, activity/, ushcn/ under one root).
+- In a new Kaggle Notebook (Python), enable the GPU accelerator if you want CUDA.
+
+Quick sanity check (2 epochs, base metrics):
+--------------------------------------------
+```
+!python scripts/run_kaggle_sanity.py \
+    --data-root /kaggle/working/MasterThesis-1/data \
+    --dataset physionet
+```
+Add `--fld-report` if you also want the FLD TSDM metrics.
+Append `--no-install` if the environment already satisfies your requirements.
+
+Full Optuna sweep (default 20 trials per plan, base metrics):
+------------------------------------------------------------
+```
+!python scripts/run_kaggle_optuna.py \
+    --data-root /kaggle/working/MasterThesis-1/data \
+    --trials 20
+```
+By default this evaluates all 4 basis functions (C/L/Q/S) across every dataset
+(physionet, mimic, activity, ushcn). Use `--plan ...` if you want a subset, or
+`--fld-report` to enable FLD metrics.
+Add `--no-install` when the session already has the packages installed.
+
+Explicit full dataset × function sweep (if you prefer to pin the plan):
+----------------------------------------------------------------------
+```
+!python scripts/run_kaggle_optuna.py \
+    --data-root /kaggle/working/MasterThesis-1/data \
+    --plan \
+        C:physionet:24 L:physionet:24 Q:physionet:24 S:physionet:24 \
+        C:mimic:24     L:mimic:24     Q:mimic:24     S:mimic:24 \
+        C:activity:3000 L:activity:3000 Q:activity:3000 S:activity:3000 \
+        C:ushcn:24     L:ushcn:24     Q:ushcn:24     S:ushcn:24
+```
+Include `--no-install` when dependencies are already installed in the notebook.
+
+Single training run (manual control):
+-------------------------------------
+```
+!python FLD_ICC/train_FLD_ICC.py \
+    -d physionet -ot 24 -bs 32 \
+    -fn L -ed 64 -ld 64 -nh 2 --depth 2 \
+    --epochs 100 --early-stop 10 --lr 1e-3 --wd 0.0 --seed 0
+```
+Append `--fldReport --fldTasks 75-3,75-25,50-50 --fldScale zscore` to capture TSDM metrics.
+
+After runs
+----------
+- Download artifacts (e.g., `mlruns/`) before the session ends:
+  ```
+  !zip -r mlruns.zip mlruns
+  ```
+  Then use Kaggle’s “Download” button.

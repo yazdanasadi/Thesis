@@ -1,0 +1,80 @@
+{
+  "mimic": {
+    "C": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.61,
+      "best_val_rmse": 0.78
+    },
+    "L": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.59,
+      "best_val_rmse": 0.77
+    },
+    "Q": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.56,
+      "best_val_rmse": 0.75
+    },
+    "S": {
+      "trainer": "icfld",
+      "best_params": {
+        "hidden_dim": 64,
+        "latent_dim": 64,
+        "embed_dim": 64,
+        "num_heads": 2,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.0001,
+        "wd": 0.001,
+        "epochs": 1000,
+        "early_stop": 10,
+        "history": 24,
+        "cycle": false
+      },
+      "best_val_mse": 0.58,
+      "best_val_rmse": 0.76
+    }
+  }
+}

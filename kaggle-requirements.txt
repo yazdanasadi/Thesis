@@ -1,0 +1,18 @@
+# Minimal add-ons for Kaggle runtime
+# ----------------------------------
+# Core numerics (numpy, pandas, scipy, etc.) are already provided by Kaggle.
+# This list only installs the extras needed by the IC-FLD workflow.
+
+torchinfo==1.8.0
+geotorch==0.3.0
+reformer-pytorch==1.4.4
+stribor==0.1.0
+local-attention==1.9.0
+product-key-memory==0.1.10
+axial-positional-embedding==0.2.1
+protobuf==4.25.3
+google-api-core>=2.19,<3.0
+google-cloud-bigquery[bqstorage,pandas]>=3.31.0
+google-cloud-bigquery-storage>=2.30.0
+rich==13.7.1
+google-cloud-automl>=2.11.0

@@ -1,0 +1,60 @@
+# --- Python / Jupyter ---
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- Envs / build ---
+.venv/
+venv/
+env/
+build/
+dist/
+
+# --- ML artifacts & data ---
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.npz
+*.npy
+*.h5
+*.pkl
+*.joblib
+runs/
+runs_icfld/
+runs_fld/
+runs_icfld_full/
+runs_fld_full/
+logs/
+cluster/logs/
+wandb/
+mlruns/
+mlruns_icfld/
+mlruns_fld/
+tensorboard/
+.checkpoints/
+
+# datasets (keep structure flexible; ignore processed caches)
+data/**/processed/
+data/**/cache/
+data/**/interim/
+data/**/tmp/
+
+# --- LaTeX build ---
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+_build/
+latex/out/
+
+# --- IDE/OS ---
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db
+results/
