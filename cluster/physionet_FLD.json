@@ -1,0 +1,70 @@
+{
+  "dataset": "physionet",
+  "model": "FLD",
+  "functions": {
+    "C": {
+      "best_val_mse": 0.003744813065826984,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "physionet",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 15
+      }
+    },
+    "L": {
+      "best_val_mse": 0.0037558148129325226,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "physionet",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 15
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.0037730492356523116,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "physionet",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 15
+      }
+    },
+    "S": {
+      "best_val_mse": 0.0037232805717757676,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "physionet",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 15
+      }
+    }
+  }
+}

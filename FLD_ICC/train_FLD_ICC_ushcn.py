@@ -44,8 +44,8 @@ p.add_argument("-r", "--run_id", default=None, type=str)
 p.add_argument("-e", "--epochs", default=300, type=int)
 p.add_argument("-es", "--early-stop", default=30, type=int)
 p.add_argument("-bs", "--batch-size", default=64, type=int)
-p.add_argument("--lr", default=1e-3, type=float, help="learning rate")
-p.add_argument("--wd", default=0.0, type=float, help="weight decay")
+p.add_argument("-lr", "--lr", default=1e-3, dest="lr", type=float, help="learning rate")
+p.add_argument("-wd", "--wd", default=0.0, dest="wd", type=float, help="weight decay")
 p.add_argument("-s", "--seed", default=0, type=int)
 
 p.add_argument("-d", "--dataset", default="ushcn", type=str,

@@ -12,7 +12,7 @@
 TRAINER_KIND="${TRAINER_KIND:-icfld}"
 
 TRIALS=${1:-20}
-MLFLOW_DIR=${2:-}
+REPO_DIR="${REPO_DIR:-/home/asadi/MasterThesis-1}"
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ eval "$(conda shell.bash hook)"
 export MKL_INTERFACE_LAYER=${MKL_INTERFACE_LAYER:-LP64}
 conda activate thesis
 
-cd "$SLURM_SUBMIT_DIR"
+cd "$REPO_DIR"
 mkdir -p logs
 export SWEEP_DATASETS="mimic"
 
@@ -41,10 +41,7 @@ case "${TRAINER_KIND}" in
     ;;
 esac
 
-if [[ -n "${MLFLOW_DIR}" ]]; then
-  CMD+=(--mlflow-dir "${MLFLOW_DIR}")
-fi
-
 echo "Running sweep for mimic with TRAINER_KIND=${TRAINER_KIND} (trials=${TRIALS})"
 echo "Command: ${CMD[*]}"
+echo "Working directory: $PWD"
 srun "${CMD[@]}"

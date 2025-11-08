@@ -1,0 +1,74 @@
+{
+  "dataset": "USHCN",
+  "model": "IC-FLD",
+  "functions": {
+    "S": {
+      "best_val_mse": 0.617846,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 64,
+        "depth": 4,
+        "early_stop": 30,
+        "embed_dim": 32,
+        "epochs": 1000,
+        "latent_dim": 32,
+        "lr": 0.001,
+        "num_heads": 8,
+        "seed": 4161,
+        "wd": 0.0
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.649074,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 64,
+        "depth": 2,
+        "early_stop": 30,
+        "embed_dim": 16,
+        "epochs": 1000,
+        "latent_dim": 256,
+        "lr": 0.002,
+        "num_heads": 4,
+        "seed": 15216,
+        "wd": 0.0
+      }
+    },
+    "L": {
+      "best_val_mse": 0.647461,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 48,
+        "depth": 2,
+        "early_stop": 30,
+        "embed_dim": 32,
+        "epochs": 1000,
+        "latent_dim": 32,
+        "lr": 0.001,
+        "num_heads": 8,
+        "seed": 3658,
+        "wd": 0.0001
+      }
+    },
+    "C": {
+      "best_val_mse": 0.635375,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 64,
+        "depth": 4,
+        "early_stop": 30,
+        "embed_dim": 16,
+        "epochs": 1000,
+        "latent_dim": 128,
+        "lr": 0.0005,
+        "num_heads": 8,
+        "seed": 12754,
+        "wd": 0.0001
+      }
+    }
+  }
+}

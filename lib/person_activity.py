@@ -1,10 +1,11 @@
 import os
+
 import lib.utils as utils
 import numpy as np
 import tarfile
 import torch
 from torch.utils.data import DataLoader
-from torchvision.datasets.utils import download_url
+from lib.downloads import download_url
 from lib.utils import get_device
 
 # Adapted from: https://github.com/rtqichen/time-series-datasets
@@ -103,7 +104,7 @@ class PersonActivity(object):
 
 		for url in self.urls:
 			filename = url.rpartition('/')[2]
-			download_url(url, self.raw_folder, filename, None)
+			download_url(url, self.raw_folder, filename)
 
 			print('Processing {}...'.format(filename))
 

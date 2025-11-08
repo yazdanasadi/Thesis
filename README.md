@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ### 3. Prepare Data
 
-Make sure your `data/` directory is uploaded to the cluster:
+data/` directory is uploaded to the cluster:
 ```bash
 # Check if data exists
 python scripts/check_data_paths.py
@@ -122,20 +122,6 @@ The sweep will search over:
 - Depth: [2, 4]
 - Embedding per head: [2, 4, 8]
 
-Results are logged to MLflow in `mlruns_cluster_sweep_*` directories.
-
-## Job Configuration
-
-### Resource Allocation
-
-All scripts request:
-- **Partition:** STUD (student partition)
-- **GPUs:** 1 GPU per job
-- **CPUs:** 4 cores per job
-- **Memory:** 16GB per job
-- **Time limits:**
-  - IC-FLD: 24 hours (longer epochs)
-  - FLD: 12 hours (fewer epochs)
 
 ### Hyperparameters
 
@@ -235,50 +221,26 @@ echo 'eval "$(conda shell.bash hook)"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-**2. GPU not available:**
-```bash
-# Check GPU allocation in your job
-scontrol show job <job_id> | grep TRES
-nvidia-smi  # Inside a running job
-```
 
-**3. Out of memory:**
-- Reduce `--batch-size` in the scripts (default: 32)
-- Request more memory: `#SBATCH --mem=32G`
 
-**4. Time limit exceeded:**
+**. Time limit exceeded:**
 - Increase time limit: `#SBATCH --time=48:00:00`
 - Enable checkpointing with `--resume` flag
 
-**5. Dataset not found:**
+**. Dataset not found:**
 ```bash
 # Run from cluster
 python scripts/check_data_paths.py
 ```
 
-### Job Efficiency Tips
-
-1. **Use array jobs** for running multiple configurations (more efficient)
-2. **Monitor early jobs** before submitting all 16 configs
-3. **Check GPU utilization:**
-   ```bash
-   # In running job
-   watch -n 1 nvidia-smi
-   ```
-4. **Use TensorBoard** to monitor training progress in real-time
-
-## Example Workflow
-
-Complete workflow for running all experiments:
 
 ```bash
 # 1. Submit IC-FLD array job (16 configs)
 sbatch cluster/submit_icfld_array.sh
-# Note the job ID, e.g., 12345
+
 
 # 2. Submit FLD array job (16 configs)
 sbatch cluster/submit_fld_array.sh
-# Note the job ID, e.g., 12346
 
 # 3. Monitor progress
 watch -n 30 'squeue -u $USER'
@@ -292,205 +254,6 @@ rsync -avz cluster:~/MasterThesis-1/FLD_ICC/saved_models/ ./results/
 rsync -avz cluster:~/MasterThesis-1/runs/cluster_* ./runs/
 ```
 
-## Cluster-Specific Notes
-
-- **Storage quota:** Check your disk usage with `quota -s`
-- **Job priority:** STUD partition jobs may have lower priority
-- **GPU types:** Check available GPUs with `sinfo -o "%N %G"`
-- **Maintenance windows:** Check cluster announcements for scheduled downtime
-
-## Support
-
-- Cluster documentation: https://www.uni-hildesheim.de/gitlab/ismll/cluster-tutorial
-- For cluster issues: Contact your cluster administrators
-- For code issues: review the repository documentation
-
----
-
-<!-- Source: cluster/QUICKSTART.md -->
-
-# Cluster Quick Start Guide
-
-## Initial Setup (Do Once)
-
-### 1. Transfer Code to Cluster
-```bash
-# Option A: Using rsync (from local machine)
-rsync -avz --exclude='data/' --exclude='runs/' --exclude='mlruns/' \
-  --exclude='.git/' --exclude='__pycache__/' \
-  ~/Users/ixdlab/MasterThesis-1/ home/asadi/MasterThesis-1/
-
-# Option B: Using Git (on cluster)
-git clone <your-repo-url>
-cd MasterThesis-1
-```
-
-### 2. Setup Environment (on cluster)
-```bash
-# Create conda environment
-conda create -n thesis python=3.11
-conda activate thesis
-
-# Install PyTorch with CUDA
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Transfer Data
-```bash
-# From local machine
-rsync -avz data/ <username>@cluster.ismll.de:~/MasterThesis-1/data/
-
-# Verify on cluster
-python scripts/check_data_paths.py
-```
-
-### 4. Update Email in Scripts
-Edit all `cluster/*.sh` files and replace `<your-mail>` with your email.
-
-## Running Experiments
-
-### Quick Commands
-
-**Option 1: Fixed Hyperparameters (Fast)**
-
-Run ALL 16 configurations with reasonable defaults:
-```bash
-sbatch cluster/submit_icfld_array.sh  # IC-FLD (16 configs)
-sbatch cluster/submit_fld_array.sh    # FLD (16 configs)
-```
-
-Run a single configuration:
-```bash
-sbatch cluster/submit_icfld_single.sh physionet L
-sbatch cluster/submit_fld_single.sh mimic Q
-```
-
-**Option 2: Hyperparameter Search (Slow but Optimal)**
-
-Run Optuna sweep to find best hyperparameters:
-```bash
-# IC-FLD sweep: 4 configs × 20 trials = 80 total runs
-sbatch cluster/submit_icfld_hypersweep.sh 20
-
-# USHCN sweep: both trainers (IC-FLD + FLD)
-sbatch cluster/submit_ushcn_hypersweep.sh 20
-
-# Note: FLD sweep needs optuna_fld.py script (not yet created)
-# sbatch cluster/submit_fld_hypersweep.sh 20
-```
-
-### Monitor Progress
-
-```bash
-# Check job queue
-squeue -u $USER
-
-# Watch job status (updates every 30 seconds)
-watch -n 30 'squeue -u $USER'
-
-# View logs in real-time
-tail -f cluster/logs/icfld_array_<jobid>_*.log
-
-# Check for errors
-grep -i error cluster/logs/*.err
-```
-
-### Cancel Jobs
-
-```bash
-# Cancel a specific job
-scancel <job_id>
-
-# Cancel all your jobs
-scancel -u $USER
-```
-
-## After Completion
-
-### Download Results
-
-```bash
-# From your local machine
-# Download model checkpoints
-rsync -avz <username>@cluster.ismll.de:~/MasterThesis-1/FLD_ICC/saved_models/ ./results/icfld/
-rsync -avz <username>@cluster.ismll.de:~/MasterThesis-1/FLD/saved_models/ ./results/fld/
-
-# Download TensorBoard logs
-rsync -avz <username>@cluster.ismll.de:~/MasterThesis-1/runs/cluster_* ./runs/
-
-# Download job logs
-rsync -avz <username>@cluster.ismll.de:~/MasterThesis-1/cluster/logs/ ./cluster/logs/
-```
-
-### View Results
-
-```bash
-# View TensorBoard logs locally
-tensorboard --logdir runs/cluster_icfld_array
-tensorboard --logdir runs/cluster_fld_array --port 6007
-```
-
-## Configuration Matrix
-
-Each array job runs these 16 combinations:
-
-| Task ID | Dataset    | Function | Obs Time |
-|---------|------------|----------|----------|
-| 0       | physionet  | C        | 24       |
-| 1       | physionet  | L        | 24       |
-| 2       | physionet  | Q        | 24       |
-| 3       | physionet  | S        | 24       |
-| 4       | mimic      | C        | 24       |
-| 5       | mimic      | L        | 24       |
-| 6       | mimic      | Q        | 24       |
-| 7       | mimic      | S        | 24       |
-| 8       | activity   | C        | 3000     |
-| 9       | activity   | L        | 3000     |
-| 10      | activity   | Q        | 3000     |
-| 11      | activity   | S        | 3000     |
-| 12      | ushcn      | C        | 24       |
-| 13      | ushcn      | L        | 24       |
-| 14      | ushcn      | Q        | 24       |
-| 15      | ushcn      | S        | 24       |
-
-## Estimated Run Times
-
-**Per configuration:**
-- IC-FLD: ~8-12 hours (up to 1000 epochs with early stopping)
-- FLD: ~4-8 hours (up to 300 epochs with early stopping)
-
-**Full array job (16 configs):**
-- If 16 GPUs available: ~8-12 hours (parallel)
-- If 4 GPUs available: ~32-48 hours (4 batches)
-- If 1 GPU available: ~128-192 hours (sequential)
-
-## Common Issues
-
-**Job fails immediately:**
-- Check email in scripts is correct
-- Verify conda environment exists: `conda env list`
-- Check data exists: `python scripts/check_data_paths.py`
-
-**Out of memory:**
-- Reduce batch size in scripts (change `BATCH_SIZE=32` to `BATCH_SIZE=16`)
-
-**Time limit exceeded:**
-- Increase time limit: Change `#SBATCH --time=24:00:00` to `48:00:00`
-
-**GPU not allocated:**
-- Check partition has GPUs: `sinfo -o "%P %G"`
-- Verify your account can request GPUs
-
-## Support
-
-- Detailed guide: `cluster/README.md`
-- Code documentation: see repository docs
-- Cluster docs: https://www.uni-hildesheim.de/gitlab/ismll/cluster-tutorial
-
----
 
 <!-- Source: README.md -->
 
@@ -548,10 +311,6 @@ pwsh ./scripts/run_best_hparams.ps1 -BestParamsPath best_hparams.json
 ```
 The replay scripts automatically route USHCN runs through `train_FLD_ICC_ushcn.py`, enable TensorBoard logging, and store checkpoints in the appropriate `saved_models/` directory.
 
-## Logging and artefacts
-- MLflow runs are optional/legacy; if you still use them they live under `mlruns/` and can be exported with `scripts/export_best_hparams.py`.
-- TensorBoard logs are collected in `runs/` (inspect with `tensorboard --logdir runs`).
-- Model checkpoints are stored under `FLD_ICC/saved_models/` or `FLD/saved_models/` depending on the trainer.
 
 
 ---
@@ -4264,5 +4023,3 @@ Key Metrics:
 - [ ] TensorBoard logs are created
 
 ---
-
-**Status:** ✅ Fixes applied and ready for testing

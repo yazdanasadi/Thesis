@@ -10,10 +10,6 @@ import lib.utils as utils
 from torch.distributions import uniform
 
 from torch.utils.data import DataLoader
-from lib.physionet import *
-from lib.ushcn import *
-from lib.mimic import MIMIC
-from lib.person_activity import *
 from sklearn import model_selection
 
 
@@ -47,6 +43,13 @@ def parse_datasets(args, patch_ts=False, length_stat=False):
 	### PhysioNet dataset ### 
 	### MIMIC dataset ###
 	if dataset_name in ["physionet", "mimic"]:
+		from lib.physionet import (
+			PhysioNet,
+			get_data_min_max,
+			patch_variable_time_collate_fn,
+			variable_time_collate_fn,
+		)
+		from lib.mimic import MIMIC
 
 		### list of tuples (record_id, tt, vals, mask) ###
 		if dataset_name == "physionet":
@@ -113,6 +116,13 @@ def parse_datasets(args, patch_ts=False, length_stat=False):
 	##################################################################
 	### USHCN dataset ###
 	elif dataset_name == "ushcn":
+		from lib.ushcn import (
+			USHCN,
+			USHCN_patch_variable_time_collate_fn,
+			USHCN_variable_time_collate_fn,
+			USHCN_time_chunk,
+			USHCN_get_seq_length,
+		)
 		args.n_months = 48 # 48 monthes
 		args.pred_window = 1 # predict future one month
 
@@ -180,6 +190,16 @@ def parse_datasets(args, patch_ts=False, length_stat=False):
 	##################################################################
 	### Activity dataset ###
 	elif dataset_name == "activity":
+		from lib.person_activity import (
+			PersonActivity,
+			Activity_time_chunk,
+			Activity_get_seq_length,
+		)
+		from lib.physionet import (
+			get_data_min_max,
+			patch_variable_time_collate_fn,
+			variable_time_collate_fn,
+		)
 		args.pred_window = 1000 # predict future 1000 ms
 
 		data_path = _get_data_path('activity')

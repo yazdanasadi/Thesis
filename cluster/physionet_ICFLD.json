@@ -1,0 +1,62 @@
+{
+  "dataset": "physionet",
+  "model": "IC-FLD",
+  "functions": {
+    "S": {
+      "best_val_mse": 0.005496788200797907,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "physionet",
+        "depth": 4,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 11
+      }
+    },
+    "L": {
+      "best_val_mse": 0.003765920697614165,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "physionet",
+        "depth": 2,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "C": {
+      "best_val_mse": 0.0037053511728323157,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "physionet",
+        "depth": 2,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.003757863385092602,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "physionet",
+        "depth": 4,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 11
+      }
+    }
+  }
+}

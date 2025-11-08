@@ -1,0 +1,70 @@
+{
+  "dataset": "activity",
+  "model": "FLD",
+  "functions": {
+    "C": {
+      "best_val_mse": 0.0030646067085378717,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "activity",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 300,
+        "history": 3000,
+        "num_heads": 4,
+        "seed": 18
+      }
+    },
+    "L": {
+      "best_val_mse": 0.003071936242013948,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "activity",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 200,
+        "history": 3000,
+        "num_heads": 4,
+        "seed": 12
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.003045105928080661,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "activity",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 200,
+        "history": 3000,
+        "num_heads": 4,
+        "seed": 15
+      }
+    },
+    "S": {
+      "best_val_mse": 0.0028366384586038466,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "batch_size": 16,
+        "dataset": "activity",
+        "depth": 2,
+        "early_stop": 30,
+        "embed_per_head": 2,
+        "epochs": 200,
+        "history": 3000,
+        "num_heads": 4,
+        "seed": 15
+      }
+    }
+  }
+}

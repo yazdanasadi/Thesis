@@ -1,13 +1,12 @@
 import os
+import tarfile
 
 import lib.utils as utils
 import numpy as np
-import tarfile
 import torch
-import matplotlib.pyplot as plt
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
-from torchvision.datasets.utils import download_url
+from lib.downloads import download_url
 from lib.utils import get_device
 
 # Adapted from: https://github.com/rtqichen/time-series-datasets
@@ -71,7 +70,7 @@ class PhysioNet(object):
 
 		for url in self.urls:
 			filename = url.rpartition('/')[2]
-			download_url(url, self.raw_folder, filename, None)
+			download_url(url, self.raw_folder, filename)
 			tar = tarfile.open(os.path.join(self.raw_folder, filename), "r:gz")
 			tar.extractall(self.raw_folder)
 			tar.close()
@@ -185,6 +184,7 @@ class PhysioNet(object):
 		return fmt_str
 
 	def visualize(self, timesteps, data, mask, plot_name):
+		import matplotlib.pyplot as plt  # imported lazily to avoid optional dependency during dataset loading
 		width = 15
 		height = 15
 

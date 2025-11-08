@@ -1,0 +1,62 @@
+{
+  "dataset": "activity",
+  "model": "IC-FLD",
+  "functions": {
+    "Q": {
+      "best_val_mse": 0.002945583284421132,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "activity",
+        "depth": 2,
+        "embed_per_head": 8,
+        "history": 3000,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "S": {
+      "best_val_mse": 0.0032924633891307335,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "activity",
+        "depth": 4,
+        "embed_per_head": 8,
+        "history": 3000,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 11
+      }
+    },
+    "L": {
+      "best_val_mse": 0.0029040735957963945,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "activity",
+        "depth": 4,
+        "embed_per_head": 8,
+        "history": 3000,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 11
+      }
+    },
+    "C": {
+      "best_val_mse": 0.0028989705372775014,
+      "trials_evaluated": 20,
+      "failures": 0,
+      "params": {
+        "dataset": "activity",
+        "depth": 2,
+        "embed_per_head": 8,
+        "history": 3000,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    }
+  }
+}

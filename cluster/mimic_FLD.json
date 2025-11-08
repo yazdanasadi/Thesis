@@ -1,0 +1,62 @@
+{
+  "dataset": "mimic",
+  "model": "FLD",
+  "functions": {
+    "C": {
+      "best_val_mse": 0.00826491342175806,
+      "params": {
+        "batch_size": 32,
+        "dataset": "mimic",
+        "depth": 2,
+        "early_stop": 70,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 16
+      }
+    },
+    "S": {
+      "best_val_mse": 0.008665193997725666,
+      "params": {
+        "batch_size": 32,
+        "dataset": "mimic",
+        "depth": 2,
+        "early_stop": 70,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 16
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.008479319844473227,
+      "params": {
+        "batch_size": 64,
+        "dataset": "mimic",
+        "depth": 2,
+        "early_stop": 70,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 14
+      }
+    },
+    "L": {
+      "best_val_mse": 0.00839676681538615,
+      "params": {
+        "batch_size": 32,
+        "dataset": "mimic",
+        "depth": 2,
+        "early_stop": 70,
+        "embed_per_head": 2,
+        "epochs": 1000,
+        "history": 24,
+        "num_heads": 4,
+        "seed": 16
+      }
+    }
+  }
+}

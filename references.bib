@@ -1,0 +1,682 @@
+
+%% ============================================================================
+%% DATASETS
+%% ============================================================================
+
+@article{silva2012physionet,
+  title={Predicting in-hospital mortality of {ICU} patients: The {PhysioNet}/{Computing in Cardiology Challenge 2012}},
+  author={Silva, Ikaro and Moody, George and Scott, Daniel J and Celi, Leo A and Mark, Roger G},
+  journal={Computing in Cardiology},
+  volume={39},
+  pages={245--248},
+  year={2012},
+  publisher={IEEE}
+}
+
+@misc{goldberger2000physiobank,
+  title={{PhysioBank, PhysioToolkit, and PhysioNet}: Components of a new research resource for complex physiologic signals},
+  author={Goldberger, Ary L and Amaral, Luis AN and Glass, Leon and Hausdorff, Jeffrey M and Ivanov, Plamen Ch and Mark, Roger G and Mietus, Joseph E and Moody, George B and Peng, Chung-Kang and Stanley, H Eugene},
+  journal={Circulation},
+  volume={101},
+  number={23},
+  pages={e215--e220},
+  year={2000},
+  publisher={Am Heart Assoc}
+}
+
+@article{johnson2016mimic,
+  title={{MIMIC-III}, a freely accessible critical care database},
+  author={Johnson, Alistair EW and Pollard, Tom J and Shen, Lu and Lehman, Li-Wei H and Feng, Mengling and Ghassemi, Mohammad and Moody, Benjamin and Szolovits, Peter and Celi, Leo Anthony and Mark, Roger G},
+  journal={Scientific Data},
+  volume={3},
+  number={1},
+  pages={1--9},
+  year={2016},
+  publisher={Nature Publishing Group},
+  doi={10.1038/sdata.2016.35}
+}
+
+@article{menne2009ushcn,
+  title={The {US} {Historical} {Climatology} {Network} {Monthly} {Temperature} {Data}, {Version} 2},
+  author={Menne, Matthew J and Williams Jr, Claude N and Vose, Russell S},
+  journal={Bulletin of the American Meteorological Society},
+  volume={90},
+  number={7},
+  pages={993--1108},
+  year={2009},
+  publisher={American Meteorological Society},
+  doi={10.1175/2008BAMS2613.1}
+}
+
+@misc{anguita2013human,
+  author={Reyes-Ortiz, Jorge and Anguita, Davide and Ghio, Alessandro and Oneto, Luca and Parra, Xavier},
+  title={{Human Activity Recognition Using Smartphones}},
+  year={2012},
+  howpublished={UCI Machine Learning Repository},
+  note={{DOI}: https://doi.org/10.24432/C54S4K}
+}
+
+%% ============================================================================
+%% PRIMARY MODEL PAPERS (Main Baselines and Related Work)
+%% ============================================================================
+
+@inproceedings{debrouwer2019gru,
+  title={{GRU-ODE-Bayes}: Continuous modeling of sporadically-observed time series},
+  author={De Brouwer, Edward and Simm, Jaak and Arany, Adam and Moreau, Yves},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={32},
+  pages={7379--7390},
+  year={2019}
+}
+
+@article{shukla2021mtan,
+  title={Multi-Time Attention Networks for Irregularly Sampled Time Series},
+  author={Shukla, Satya Narayan and Marlin, Benjamin M},
+  journal={arXiv preprint arXiv:2101.10318},
+  year={2021}
+}
+
+@article{chen2018neural,
+  title={Neural ordinary differential equations},
+  author={Chen, Ricky TQ and Rubanova, Yulia and Bettencourt, Jesse and Duvenaud, David K},
+  journal={Advances in Neural Information Processing Systems},
+  volume={31},
+  year={2018},
+  note={Best Paper Award at NeurIPS 2018}
+}
+
+%% ============================================================================
+%% TRANSFORMER AND ATTENTION MECHANISMS
+%% ============================================================================
+
+@article{vaswani2017attention,
+  title={Attention is all you need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, {\L}ukasz and Polosukhin, Illia},
+  journal={Advances in Neural Information Processing Systems},
+  volume={30},
+  year={2017}
+}
+
+@inproceedings{kitaev2020reformer,
+  title={Reformer: The efficient transformer},
+  author={Kitaev, Nikita and Kaiser, {\L}ukasz and Levskaya, Anselm},
+  booktitle={International Conference on Learning Representations},
+  year={2020}
+}
+
+@inproceedings{dao2022flashattention,
+  title={{FlashAttention}: Fast and memory-efficient exact attention with {IO}-awareness},
+  author={Dao, Tri and Fu, Daniel Y and Ermon, Stefano and Rudra, Atri and R{\'e}, Christopher},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={35},
+  pages={16344--16359},
+  year={2022}
+}
+
+@inproceedings{lee2019set,
+  title={Set transformer: A framework for attention-based permutation-invariant neural networks},
+  author={Lee, Juho and Lee, Yoonho and Kim, Jungtaek and Kosiorek, Adam and Choi, Seungjin and Teh, Yee Whye},
+  booktitle={International Conference on Machine Learning},
+  pages={3744--3753},
+  year={2019},
+  organization={PMLR}
+}
+
+%% ============================================================================
+%% TIME SERIES TRANSFORMERS
+%% ============================================================================
+
+@inproceedings{zhou2021informer,
+  title={Informer: Beyond efficient transformer for long sequence time-series forecasting},
+  author={Zhou, Haoyi and Zhang, Shanghang and Peng, Jieqi and Zhang, Shuai and Li, Jianxin and Xiong, Hui and Zhang, Wancai},
+  booktitle={AAAI Conference on Artificial Intelligence},
+  volume={35},
+  number={12},
+  pages={11106--11115},
+  year={2021},
+  note={AAAI'21 Best Paper Award}
+}
+
+@inproceedings{wu2021autoformer,
+  title={Autoformer: Decomposition transformers with auto-correlation for long-term series forecasting},
+  author={Wu, Haixu and Xu, Jiehui and Wang, Jianmin and Long, Mingsheng},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={34},
+  pages={22419--22430},
+  year={2021}
+}
+
+%% ============================================================================
+%% RECURRENT NEURAL NETWORKS
+%% ============================================================================
+
+@article{hochreiter1997lstm,
+  title={Long short-term memory},
+  author={Hochreiter, Sepp and Schmidhuber, J{\"u}rgen},
+  journal={Neural Computation},
+  volume={9},
+  number={8},
+  pages={1735--1780},
+  year={1997},
+  publisher={MIT Press},
+  doi={10.1162/neco.1997.9.8.1735}
+}
+
+@article{cho2014learning,
+  title={Learning phrase representations using {RNN} encoder-decoder for statistical machine translation},
+  author={Cho, Kyunghyun and Van Merri{\"e}nboer, Bart and Gulcehre, Caglar and Bahdanau, Dzmitry and Bougares, Fethi and Schwenk, Holger and Bengio, Yoshua},
+  journal={arXiv preprint arXiv:1406.1078},
+  year={2014}
+}
+
+@article{chung2014empirical,
+  title={Empirical evaluation of gated recurrent neural networks on sequence modeling},
+  author={Chung, Junyoung and Gulcehre, Caglar and Cho, KyungHyun and Bengio, Yoshua},
+  journal={arXiv preprint arXiv:1412.3555},
+  year={2014}
+}
+
+%% ============================================================================
+%% CONVOLUTIONAL NETWORKS
+%% ============================================================================
+
+@article{bai2018tcn,
+  title={An empirical evaluation of generic convolutional and recurrent networks for sequence modeling},
+  author={Bai, Shaojie and Kolter, J Zico and Koltun, Vladlen},
+  journal={arXiv preprint arXiv:1803.01271},
+  year={2018}
+}
+
+@inproceedings{he2016deep,
+  title={Deep residual learning for image recognition},
+  author={He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={770--778},
+  year={2016}
+}
+
+%% ============================================================================
+%% GRAPH NEURAL NETWORKS
+%% ============================================================================
+
+@article{scarselli2009graph,
+  title={The graph neural network model},
+  author={Scarselli, Franco and Gori, Marco and Tsoi, Ah Chung and Hagenbuchner, Markus and Monfardini, Gabriele},
+  journal={IEEE Transactions on Neural Networks},
+  volume={20},
+  number={1},
+  pages={61--80},
+  year={2009},
+  publisher={IEEE},
+  doi={10.1109/TNN.2008.2005605}
+}
+
+%% ============================================================================
+%% OPTIMIZATION AND REGULARIZATION
+%% ============================================================================
+
+@article{kingma2014adam,
+  title={Adam: A method for stochastic optimization},
+  author={Kingma, Diederik P and Ba, Jimmy},
+  journal={arXiv preprint arXiv:1412.6980},
+  year={2014}
+}
+
+@inproceedings{ioffe2015batch,
+  title={Batch normalization: Accelerating deep network training by reducing internal covariate shift},
+  author={Ioffe, Sergey and Szegedy, Christian},
+  booktitle={International Conference on Machine Learning},
+  pages={448--456},
+  year={2015},
+  organization={PMLR}
+}
+
+@article{ba2016layer,
+  title={Layer normalization},
+  author={Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E},
+  journal={arXiv preprint arXiv:1607.06450},
+  year={2016}
+}
+
+@article{srivastava2014dropout,
+  title={Dropout: A simple way to prevent neural networks from overfitting},
+  author={Srivastava, Nitish and Hinton, Geoffrey and Krizhevsky, Alex and Sutskever, Ilya and Salakhutdinov, Ruslan},
+  journal={The Journal of Machine Learning Research},
+  volume={15},
+  number={1},
+  pages={1929--1958},
+  year={2014},
+  publisher={JMLR.org}
+}
+
+%% ============================================================================
+%% DEEP LEARNING FRAMEWORKS AND LIBRARIES
+%% ============================================================================
+
+@incollection{paszke2019pytorch,
+  title={{PyTorch}: An imperative style, high-performance deep learning library},
+  author={Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and Gimelshein, Natalia and Antiga, Luca and Desmaison, Alban and Kopf, Andreas and Yang, Edward and DeVito, Zachary and Raison, Martin and Tejani, Alykhan and Chilamkurthy, Sasank and Steiner, Benoit and Fang, Lu and Bai, Junjie and Chintala, Soumith},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={32},
+  pages={8024--8035},
+  year={2019}
+}
+
+@inproceedings{abadi2016tensorflow,
+  title={{TensorFlow}: A system for large-scale machine learning},
+  author={Abadi, Mart{\'\i}n and Barham, Paul and Chen, Jianmin and Chen, Zhifeng and Davis, Andy and Dean, Jeffrey and Devin, Matthieu and Ghemawat, Sanjay and Irving, Geoffrey and Isard, Michael and others},
+  booktitle={12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)},
+  pages={265--283},
+  year={2016}
+}
+
+%% ============================================================================
+%% SCIENTIFIC COMPUTING LIBRARIES
+%% ============================================================================
+
+@article{harris2020numpy,
+  title={Array programming with {NumPy}},
+  author={Harris, Charles R and Millman, K Jarrod and Van Der Walt, St{\'e}fan J and Gommers, Ralf and Virtanen, Pauli and Cournapeau, David and Wieser, Eric and Taylor, Julian and Berg, Sebastian and Smith, Nathaniel J and others},
+  journal={Nature},
+  volume={585},
+  number={7825},
+  pages={357--362},
+  year={2020},
+  publisher={Nature Publishing Group},
+  doi={10.1038/s41586-020-2649-2}
+}
+
+@inproceedings{mckinney2010pandas,
+  title={Data structures for statistical computing in {Python}},
+  author={McKinney, Wes and others},
+  booktitle={Proceedings of the 9th Python in Science Conference},
+  volume={445},
+  pages={51--56},
+  year={2010},
+  organization={Austin, TX},
+  doi={10.25080/Majora-92bf1922-00a}
+}
+
+@article{pedregosa2011scikit,
+  title={Scikit-learn: Machine learning in {Python}},
+  author={Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and Blondel, Mathieu and Prettenhofer, Peter and Weiss, Ron and Dubourg, Vincent and others},
+  journal={Journal of Machine Learning Research},
+  volume={12},
+  pages={2825--2830},
+  year={2011}
+}
+
+@misc{scipy2020,
+  author = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
+            Haberland, Matt and Reddy, Tyler and Cournapeau, David and
+            Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and
+            Bright, Jonathan and {van der Walt}, St{\'e}fan J. and
+            Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and
+            Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and
+            Kern, Robert and Larson, Eric and Carey, C J and
+            Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and
+            {VanderPlas}, Jake and Laxalde, Denis and Perktold, Josef and
+            Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and
+            Harris, Charles R. and Archibald, Anne M. and
+            Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and
+            {van Mulbregt}, Paul and {SciPy 1.0 Contributors}},
+  title  = {{SciPy} 1.0: Fundamental Algorithms for Scientific
+            Computing in {Python}},
+  journal = {Nature Methods},
+  year   = {2020},
+  volume = {17},
+  pages  = {261--272},
+  doi    = {10.1038/s41592-019-0686-2},
+}
+
+%% ============================================================================
+%% VISUALIZATION AND TOOLS
+%% ============================================================================
+
+@article{hunter2007matplotlib,
+  title={Matplotlib: A 2D graphics environment},
+  author={Hunter, John D},
+  journal={Computing in Science \& Engineering},
+  volume={9},
+  number={3},
+  pages={90--95},
+  year={2007},
+  publisher={IEEE Computer Society},
+  doi={10.1109/MCSE.2007.55}
+}
+
+%% ============================================================================
+%% ADDITIONAL NEURAL NETWORK ARCHITECTURES
+%% ============================================================================
+
+@article{bahdanau2014neural,
+  title={Neural machine translation by jointly learning to align and translate},
+  author={Bahdanau, Dzmitry and Cho, Kyunghyun and Bengio, Yoshua},
+  journal={arXiv preprint arXiv:1409.0473},
+  year={2014}
+}
+
+%% ============================================================================
+%% HYPERPARAMETER OPTIMIZATION
+%% ============================================================================
+
+@inproceedings{akiba2019optuna,
+  title={Optuna: A next-generation hyperparameter optimization framework},
+  author={Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru and Koyama, Masanori},
+  booktitle={Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
+  pages={2623--2631},
+  year={2019}
+}
+
+%% ============================================================================
+%% PROBABILISTIC MODELS AND GAUSSIAN PROCESSES
+%% ============================================================================
+
+@article{rasmussen2003gaussian,
+  title={Gaussian processes in machine learning},
+  author={Rasmussen, Carl Edward},
+  journal={Summer school on machine learning},
+  pages={63--71},
+  year={2003},
+  publisher={Springer}
+}
+
+%% ============================================================================
+%% NORMALIZING FLOWS
+%% ============================================================================
+
+@article{rezende2015variational,
+  title={Variational inference with normalizing flows},
+  author={Rezende, Danilo and Mohamed, Shakir},
+  journal={International Conference on Machine Learning},
+  pages={1530--1538},
+  year={2015},
+  organization={PMLR}
+}
+
+%% ============================================================================
+%% EINOPS (Tensor Operations)
+%% ============================================================================
+
+@inproceedings{rogozhnikov2021einops,
+  title={Einops: Clear and reliable tensor manipulations with Einstein-like notation},
+  author={Rogozhnikov, Alex},
+  booktitle={International Conference on Learning Representations},
+  year={2021}
+}
+
+%% ============================================================================
+%% POSITIONAL EMBEDDINGS
+%% ============================================================================
+
+@article{wang2020linformer,
+  title={Linformer: Self-attention with linear complexity},
+  author={Wang, Sinong and Li, Belinda Z and Khabsa, Madian and Fang, Han and Ma, Hao},
+  journal={arXiv preprint arXiv:2006.04768},
+  year={2020}
+}
+
+%% ============================================================================
+%% LOCAL ATTENTION MECHANISMS
+%% ============================================================================
+
+@article{child2019generating,
+  title={Generating long sequences with sparse transformers},
+  author={Child, Rewon and Gray, Scott and Radford, Alec and Sutskever, Ilya},
+  journal={arXiv preprint arXiv:1904.10509},
+  year={2019}
+}
+
+%% ============================================================================
+%% TIME SERIES BENCHMARKS AND DATASETS
+%% ============================================================================
+
+@article{dau2019ucr,
+  title={The {UCR} time series archive},
+  author={Dau, Hoang Anh and Bagnall, Anthony and Kamgar, Kaveh and Yeh, Chin-Chia Michael and Zhu, Yan and Gharghabi, Shaghayegh and Ratanamahatana, Chotirat Ann and Keogh, Eamonn},
+  journal={IEEE/CAA Journal of Automatica Sinica},
+  volume={6},
+  number={6},
+  pages={1293--1305},
+  year={2019},
+  publisher={IEEE}
+}
+
+%% ============================================================================
+%% EARLY STOPPING AND MODEL SELECTION
+%% ============================================================================
+
+@article{prechelt1998early,
+  title={Early stopping-but when?},
+  author={Prechelt, Lutz},
+  journal={Neural Networks: Tricks of the trade},
+  pages={55--69},
+  year={1998},
+  publisher={Springer}
+}
+
+%% ============================================================================
+%% WEIGHT DECAY AND L2 REGULARIZATION
+%% ============================================================================
+
+@article{loshchilov2017decoupled,
+  title={Decoupled weight decay regularization},
+  author={Loshchilov, Ilya and Hutter, Frank},
+  journal={arXiv preprint arXiv:1711.05101},
+  year={2017}
+}
+
+%% ============================================================================
+%% VARIATIONAL AUTOENCODERS
+%% ============================================================================
+
+@article{kingma2013auto,
+  title={Auto-encoding variational {Bayes}},
+  author={Kingma, Diederik P and Welling, Max},
+  journal={arXiv preprint arXiv:1312.6114},
+  year={2013}
+}
+
+%% ============================================================================
+%% BAYESIAN DEEP LEARNING
+%% ============================================================================
+
+@inproceedings{gal2016dropout,
+  title={Dropout as a {Bayesian} approximation: Representing model uncertainty in deep learning},
+  author={Gal, Yarin and Ghahramani, Zoubin},
+  booktitle={International Conference on Machine Learning},
+  pages={1050--1059},
+  year={2016},
+  organization={PMLR}
+}
+
+%% ============================================================================
+%% MULTI-TASK LEARNING
+%% ============================================================================
+
+@article{ruder2017overview,
+  title={An overview of multi-task learning in deep neural networks},
+  author={Ruder, Sebastian},
+  journal={arXiv preprint arXiv:1706.05098},
+  year={2017}
+}
+
+%% ============================================================================
+%% ATTENTION MECHANISMS (Additional)
+%% ============================================================================
+
+@inproceedings{luong2015effective,
+  title={Effective approaches to attention-based neural machine translation},
+  author={Luong, Minh-Thang and Pham, Hieu and Manning, Christopher D},
+  booktitle={Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing},
+  pages={1412--1421},
+  year={2015}
+}
+
+%% ============================================================================
+%% SEQUENCE-TO-SEQUENCE MODELS
+%% ============================================================================
+
+@article{sutskever2014sequence,
+  title={Sequence to sequence learning with neural networks},
+  author={Sutskever, Ilya and Vinyals, Oriol and Le, Quoc V},
+  journal={Advances in Neural Information Processing Systems},
+  volume={27},
+  year={2014}
+}
+
+%% ============================================================================
+%% EMBEDDING TECHNIQUES
+%% ============================================================================
+
+@article{mikolov2013efficient,
+  title={Efficient estimation of word representations in vector space},
+  author={Mikolov, Tomas and Chen, Kai and Corrado, Greg and Dean, Jeffrey},
+  journal={arXiv preprint arXiv:1301.3781},
+  year={2013}
+}
+
+%% ============================================================================
+%% BACKPROPAGATION
+%% ============================================================================
+
+@article{rumelhart1986learning,
+  title={Learning representations by back-propagating errors},
+  author={Rumelhart, David E and Hinton, Geoffrey E and Williams, Ronald J},
+  journal={Nature},
+  volume={323},
+  number={6088},
+  pages={533--536},
+  year={1986},
+  publisher={Nature Publishing Group}
+}
+
+%% ============================================================================
+%% GLOROT/XAVIER INITIALIZATION
+%% ============================================================================
+
+@inproceedings{glorot2010understanding,
+  title={Understanding the difficulty of training deep feedforward neural networks},
+  author={Glorot, Xavier and Bengio, Yoshua},
+  booktitle={Proceedings of the Thirteenth International Conference on Artificial Intelligence and Statistics},
+  pages={249--256},
+  year={2010},
+  organization={JMLR Workshop and Conference Proceedings}
+}
+
+%% ============================================================================
+%% KAIMING/HE INITIALIZATION
+%% ============================================================================
+
+@inproceedings{he2015delving,
+  title={Delving deep into rectifiers: Surpassing human-level performance on {ImageNet} classification},
+  author={He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle={Proceedings of the IEEE International Conference on Computer Vision},
+  pages={1026--1034},
+  year={2015}
+}
+
+%% ============================================================================
+%% ACTIVATION FUNCTIONS
+%% ============================================================================
+
+@article{nair2010rectified,
+  title={Rectified linear units improve restricted {Boltzmann} machines},
+  author={Nair, Vinod and Hinton, Geoffrey E},
+  journal={Proceedings of the 27th International Conference on Machine Learning (ICML-10)},
+  pages={807--814},
+  year={2010}
+}
+
+@inproceedings{ramachandran2017searching,
+  title={Searching for activation functions},
+  author={Ramachandran, Prajit and Zoph, Barret and Le, Quoc V},
+  booktitle={arXiv preprint arXiv:1710.05941},
+  year={2017}
+}
+
+@article{hendrycks2016gaussian,
+  title={Gaussian error linear units ({GELUs})},
+  author={Hendrycks, Dan and Gimpel, Kevin},
+  journal={arXiv preprint arXiv:1606.08415},
+  year={2016}
+}
+
+%% ============================================================================
+%% LEARNING RATE SCHEDULES
+%% ============================================================================
+
+@article{smith2017cyclical,
+  title={Cyclical learning rates for training neural networks},
+  author={Smith, Leslie N},
+  journal={2017 IEEE winter conference on applications of computer vision (WACV)},
+  pages={464--472},
+  year={2017},
+  organization={IEEE}
+}
+
+@inproceedings{loshchilov2016sgdr,
+  title={{SGDR}: Stochastic gradient descent with warm restarts},
+  author={Loshchilov, Ilya and Hutter, Frank},
+  booktitle={International Conference on Learning Representations},
+  year={2017}
+}
+
+%% ============================================================================
+%% DATA AUGMENTATION FOR TIME SERIES
+%% ============================================================================
+
+@article{wen2020time,
+  title={Time series data augmentation for deep learning: A survey},
+  author={Wen, Qingsong and Sun, Liang and Yang, Fan and Song, Xiaomin and Gao, Jingkun and Wang, Xue and Xu, Huan},
+  journal={arXiv preprint arXiv:2002.12478},
+  year={2020}
+}
+
+%% ============================================================================
+%% MISSING DATA IMPUTATION
+%% ============================================================================
+
+@article{che2018recurrent,
+  title={Recurrent neural networks for multivariate time series with missing values},
+  author={Che, Zhengping and Purushotham, Sanjay and Cho, Kyunghyun and Sontag, David and Liu, Yan},
+  journal={Scientific Reports},
+  volume={8},
+  number={1},
+  pages={1--12},
+  year={2018},
+  publisher={Nature Publishing Group}
+}
+
+%% ============================================================================
+%% CROSS-VALIDATION
+%% ============================================================================
+
+@article{bergmeir2018note,
+  title={A note on the validity of cross-validation for evaluating autoregressive time series prediction},
+  author={Bergmeir, Christoph and Hyndman, Rob J and Koo, Bonsoo},
+  journal={Computational Statistics \& Data Analysis},
+  volume={120},
+  pages={70--83},
+  year={2018},
+  publisher={Elsevier}
+}
+
+%% ============================================================================
+%% FORECASTING EVALUATION METRICS
+%% ============================================================================
+
+@article{hyndman2006another,
+  title={Another look at measures of forecast accuracy},
+  author={Hyndman, Rob J and Koehler, Anne B},
+  journal={International Journal of Forecasting},
+  volume={22},
+  number={4},
+  pages={679--688},
+  year={2006},
+  publisher={Elsevier}
+}
+
+%% ============================================================================
+%% END OF BIBLIOGRAPHY
+%% ============================================================================

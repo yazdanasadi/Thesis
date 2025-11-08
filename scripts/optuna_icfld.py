@@ -59,16 +59,31 @@ VAL_RMSE_RE = re.compile(r"val_rmse(?:_best)?:\s*([0-9.+-eE]+)")
 VAL_MAE_RE = re.compile(r"val_mae(?:_best)?:\s*([0-9.+-eE]+)")
 
 
+def _normalize_dataset_name(name: str) -> str:
+    # Accept values like physionet, "physionet", 'physionet', and mixed case.
+    return name.strip().strip("'\"").lower()
+
+
 def _filter_plans_by_env(plans: Iterable[tuple[str, str, int]]) -> list[tuple[str, str, int]]:
     allowed_spec = os.environ.get("SWEEP_DATASETS")
     if not allowed_spec:
         return list(plans)
-    allowed = {item.strip().lower() for item in allowed_spec.split(",") if item.strip()}
-    filtered = [plan for plan in plans if plan[1].lower() in allowed]
+
+    allowed: set[str] = set()
+    for raw in allowed_spec.split(","):
+        normalized = _normalize_dataset_name(raw)
+        if normalized:
+            allowed.add(normalized)
+    filtered: list[tuple[str, str, int]] = []
+    for plan in plans:
+        dataset_name = _normalize_dataset_name(plan[1])
+        if dataset_name in allowed:
+            filtered.append(plan)
     if not filtered:
+        schedule_names = sorted({_normalize_dataset_name(plan[1]) for plan in plans})
         raise ValueError(
             f"No search plans remain after applying SWEEP_DATASETS={allowed_spec!r}. "
-            "Please ensure dataset names match the schedule."
+            f"Valid dataset names: {', '.join(schedule_names)}"
         )
     return filtered
 
@@ -474,6 +489,8 @@ def main() -> None:
 
     search_plans = _filter_plans_by_env([
         ("C", "activity", 3000),
+        ("L", "activity", 3000),
+        ("S", "activity", 3000),
         ("L", "mimic", 24),
         ("Q", "physionet", 24),
         ("S", "ushcn", 24),

@@ -1,0 +1,58 @@
+{
+  "dataset": "mimic",
+  "model": "IC-FLD",
+  "functions": {
+    "S": {
+      "best_val_mse": 0.009438061820671244,
+      "params": {
+        "dataset": "mimic",
+        "depth": 2,
+        "epochs": 1000,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "L": {
+      "best_val_mse": 0.008138038355664071,
+      "params": {
+        "dataset": "mimic",
+        "depth": 2,
+        "epochs": 1000,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "Q": {
+      "best_val_mse": 0.008092591763148237,
+      "params": {
+        "dataset": "mimic",
+        "depth": 2,
+        "epochs": 1000,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    },
+    "C": {
+      "best_val_mse": 0.008113228618837759,
+      "params": {
+        "dataset": "mimic",
+        "depth": 2,
+        "epochs": 1000,
+        "embed_per_head": 8,
+        "history": 24,
+        "latent_dim": 32,
+        "num_heads": 8,
+        "seed": 8
+      }
+    }
+  }
+}
