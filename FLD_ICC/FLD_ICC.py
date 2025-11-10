@@ -101,6 +101,12 @@ class IC_FLD(nn.Module):
         # map per-basis latent to per-channel coefficient
         self.coeff_proj = nn.Linear(latent_dim, self.C)  # -> [B,P,C]
 
+        # patchify memory defaults (off by default to preserve legacy behavior)
+        self.use_patchify = False
+        self.num_patches = 8
+        self.patch_agg = "mean"
+        self.patch_pos = nn.Parameter(torch.randn(self.num_patches, self.E))
+
     # ---- helpers ----
     def _time_embed(self, tt):  # tt: [B,T] normalized to [0,1]
         e = self.time_linear(tt.unsqueeze(-1))  # [B,T,E]
@@ -135,6 +141,64 @@ class IC_FLD(nn.Module):
         c_in = base.gather(1, phases.unsqueeze(-1).expand(-1, -1, C))
         return c_in, base
 
+    def _ensure_patch_pos(self, num_patches: int) -> torch.Tensor:
+        num_patches = int(num_patches)
+        if num_patches <= 0:
+            raise ValueError("num_patches must be positive")
+        if self.patch_pos.shape[0] == num_patches:
+            return self.patch_pos
+        device = self.patch_pos.device
+        dtype = self.patch_pos.dtype
+        new_pos = torch.randn(num_patches, self.E, device=device, dtype=dtype)
+        self.patch_pos = nn.Parameter(new_pos)
+        return self.patch_pos
+
+    def _build_memory(self, timesteps, X, M):
+        """
+        Args:
+            timesteps: [B,T] normalized to [0,1]
+            X: [B,T,C]
+            M: [B,T,C] binary mask
+        Returns:
+            K: [B,S,E], V: [B,S,E], mask_flat: [B,S] with S=T*C (point) or S=(P*C) (patch)
+        """
+        B, T, C = X.shape
+        Et = self._time_embed(timesteps).unsqueeze(2).expand(-1, -1, C, -1)
+        Ec = self.channel_embed.unsqueeze(0).unsqueeze(0).expand(B, T, -1, -1)
+        Ex = self.value_proj(X.unsqueeze(-1))
+        KV = Et + Ec + Ex
+
+        if not self.use_patchify:
+            K = KV.view(B, T * C, self.E)
+            V = K
+            mask_flat = M.reshape(B, T * C).bool()
+            return K, V, mask_flat
+
+        P = max(int(self.num_patches), 1)
+        patch_pos = self._ensure_patch_pos(P)
+        bin_idx = torch.clamp((timesteps * P).floor().long(), min=0, max=P - 1)  # [B,T]
+        patch_tokens = KV.new_zeros(B, P, C, self.E)
+        patch_mask = M.new_zeros(B, P, C, dtype=torch.bool)
+
+        agg_mode = (self.patch_agg or "mean").lower()
+        for p in range(P):
+            sel_t = (bin_idx == p).unsqueeze(-1).unsqueeze(-1)  # [B,T,1,1]
+            sel_m = sel_t.expand(-1, -1, C, 1) & M.unsqueeze(-1).bool()  # [B,T,C,1]
+            weights = sel_m.float()
+            denom = weights.sum(dim=1).clamp(min=1.0)
+            if agg_mode == "sum":
+                agg = (KV * weights).sum(dim=1)
+            else:
+                agg = (KV * weights).sum(dim=1) / denom
+            pos = patch_pos[p].view(1, 1, self.E).expand(B, C, self.E)
+            patch_tokens[:, p] = agg + pos
+            patch_mask[:, p] = (weights.sum(dim=1) > 0).squeeze(-1)
+
+        K = patch_tokens.view(B, P * C, self.E)
+        V = K
+        mask_flat = patch_mask.view(B, P * C)
+        return K, V, mask_flat
+
     # ---- forward ----
     
     def forward(self, timesteps, X, M, y_times, denorm_time_max: Optional[float] = None):        
@@ -160,15 +224,7 @@ class IC_FLD(nn.Module):
             c_in, c_base = self._cycle_baseline(tt_phys, X, M)
             X = X - c_in
 
-        # memory over all (time, channel) slots
-        Et = self._time_embed(timesteps).unsqueeze(2).expand(-1, -1, C, -1)         # [B,T,C,E]
-        Ec = self.channel_embed.unsqueeze(0).unsqueeze(0).expand(B, T, -1, -1)       # [B,T,C,E]
-        Ex = self.value_proj(X.unsqueeze(-1))                                        # [B,T,C,E]
-        KV = Et + Ec + Ex
-
-        K = KV.view(B, T*C, self.E)                                                 # [B,S,E]
-        V = K
-        mask_flat = M.reshape(B, T*C).bool()                                        # [B,S]
+        K, V, mask_flat = self._build_memory(timesteps, X, M)
 
         # queries: one per basis (shared across batch)
         Q = self.q_basis.unsqueeze(0).expand(B, -1, -1)                             # [B,P,E]

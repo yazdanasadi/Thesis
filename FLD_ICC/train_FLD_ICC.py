@@ -472,6 +472,16 @@ model_create_time = time.time() - model_create_start
 logger.info(f"Model created in {model_create_time:.2f} seconds")
 logger.info(f"Model: IC-FLD(input_dim={INPUT_DIM}, latent_dim={args.latent_dim}, function={args.function}, heads={args.num_heads}, depth={model_kwargs.get('depth', 'N/A')})")
 
+# --- Enable patchify mode ---
+MODEL.use_patchify = True          # activates time×channel patch aggregation
+MODEL.num_patches = 12             # number of temporal windows (tune e.g., 6–12)
+MODEL.patch_agg = "mean"           # "mean" or "sum"
+if hasattr(MODEL, "_ensure_patch_pos"):
+    MODEL._ensure_patch_pos(MODEL.num_patches)
+
+if args.tbon and writer:
+    writer.add_text("config/patchify_mode", "on")
+
 # ---------------- Loss / utils ----------------
 def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     mask = mask.float()
