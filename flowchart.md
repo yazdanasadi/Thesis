@@ -1,8 +1,8 @@
-## IC-FLD Training & Forward Pipeline (No Residual Cycle)
+## IC-FLD Training & Forward Pipeline 
 
 ```mermaid
 flowchart TD
-    A[CLI Args / Config] --> B["parse_datasets()\(t-PatchGNN preprocessing)"]
+    A[CLI Args / Config] --> B["parse_datasets()"]
     B --> C[Training Loop]
     C --> D["Get Batch\nobs_tp, obs_x, obs_m, tp_pred, targets"]
     D --> E[MODEL.forward]

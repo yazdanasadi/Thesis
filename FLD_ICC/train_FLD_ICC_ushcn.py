@@ -253,6 +253,13 @@ if "depth" in accepts:  kw["depth"] = args.depth
 
 MODEL = IC_FLD(**kw).to(DEVICE)
 
+# --- Enable patchify mode ---
+MODEL.use_patchify = True          # activates time×channel patch aggregation
+MODEL.num_patches = 12             # number of temporal windows (tune e.g., 6–12)
+MODEL.patch_agg = "mean"           # "mean" or "sum"
+if hasattr(MODEL, "_ensure_patch_pos"):
+    MODEL._ensure_patch_pos(MODEL.num_patches)
+
 # ---------------- Helpers ----------------
 def _orient_time_last(x: torch.Tensor, input_dim: int) -> torch.Tensor:
     if x.dim() != 3: raise ValueError(f"Expected 3D tensor, got {x.shape}")
@@ -315,6 +322,7 @@ if args.tbon:
     from torch.utils.tensorboard import SummaryWriter
     run_name = f"ICFLD_USHCN_{int(time.time())}"
     writer = SummaryWriter(log_dir=os.path.join(args.logdir, run_name))
+    writer.add_text("config/patchify_mode", "on")
     try:
         b0 = utils.get_next_batch(data_obj["train_dataloader"])
         T0, X0, M0, TY0, _, _ = batch_to_icfld(b0, INPUT_DIM, DEVICE)

@@ -189,6 +189,13 @@ if _maybe("time_max_hours"): model_kwargs["time_max_hours"] = args.time_max_hour
 
 MODEL = IC_FLD(**model_kwargs).to(DEVICE)
 
+# --- Enable patchify mode ---
+MODEL.use_patchify = True          # activates time×channel patch aggregation
+MODEL.num_patches = 12             # number of temporal windows (tune e.g., 6–12)
+MODEL.patch_agg = "mean"           # "mean" or "sum"
+if hasattr(MODEL, "_ensure_patch_pos"):
+    MODEL._ensure_patch_pos(MODEL.num_patches)
+
 # ---- OPTIMIZATION: torch.compile() ----
 if not args.no_compile and hasattr(torch, 'compile'):
     try:
@@ -197,6 +204,9 @@ if not args.no_compile and hasattr(torch, 'compile'):
         print("[Optimization] Model compiled successfully!")
     except Exception as e:
         print(f"[Optimization] torch.compile() failed ({e}), continuing without compilation.")
+
+if args.tbon and writer:
+    writer.add_text("config/patchify_mode", "on")
 
 # ---- Loss / utils ----
 def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
