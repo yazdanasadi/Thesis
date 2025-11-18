@@ -13,7 +13,10 @@
         "history": 24,
         "latent_dim": 32,
         "num_heads": 8,
-        "seed": 11
+        "seed": 11,
+        "use_patchify": true,
+        "num_patches": 12,
+        "patch_agg": "mean"
       }
     },
     "L": {
@@ -27,7 +30,10 @@
         "history": 24,
         "latent_dim": 32,
         "num_heads": 8,
-        "seed": 8
+        "seed": 8,
+        "use_patchify": true,
+        "num_patches": 12,
+        "patch_agg": "mean"
       }
     },
     "C": {
@@ -41,7 +47,10 @@
         "history": 24,
         "latent_dim": 32,
         "num_heads": 8,
-        "seed": 8
+        "seed": 8,
+        "use_patchify": true,
+        "num_patches": 12,
+        "patch_agg": "mean"
       }
     },
     "Q": {
@@ -55,7 +64,10 @@
         "history": 24,
         "latent_dim": 32,
         "num_heads": 8,
-        "seed": 11
+        "seed": 11,
+        "use_patchify": true,
+        "num_patches": 12,
+        "patch_agg": "mean"
       }
     }
   }

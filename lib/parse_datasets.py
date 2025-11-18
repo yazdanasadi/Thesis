@@ -51,6 +51,10 @@ def parse_datasets(args, patch_ts=False, length_stat=False):
 		)
 		from lib.mimic import MIMIC
 
+		# Default to forecasting the next 24 hours if not specified
+		if not hasattr(args, "pred_window") or args.pred_window is None:
+			args.pred_window = 24
+
 		### list of tuples (record_id, tt, vals, mask) ###
 		if dataset_name == "physionet":
 			data_path = _get_data_path('physionet')
@@ -123,6 +127,7 @@ def parse_datasets(args, patch_ts=False, length_stat=False):
 			USHCN_time_chunk,
 			USHCN_get_seq_length,
 		)
+		from lib.physionet import get_data_min_max
 		args.n_months = 48 # 48 monthes
 		args.pred_window = 1 # predict future one month
 

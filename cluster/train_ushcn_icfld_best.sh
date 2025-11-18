@@ -90,13 +90,27 @@ for fn_name, meta in sorted(functions.items()):
         "-fn", fn_name,
     ]
 
-    def add_arg(flag: str, key: str | tuple[str, ...], required: bool = False):
+    def add_arg(flag: str, key: str | tuple[str, ...], required: bool = False, bool_flag: bool = False):
         keys = (key,) if isinstance(key, str) else key
         val = maybe(params, *keys)
         if val is None:
             if required:
                 names = ", ".join(keys)
                 raise ValueError(f"Missing required param(s) {names!r} for function '{fn_name}'.")
+            return
+        if bool_flag:
+            if isinstance(val, str):
+                v = val.strip().lower()
+                if v in {"1", "true", "yes"}:
+                    val_bool = True
+                elif v in {"0", "false", "no"}:
+                    val_bool = False
+                else:
+                    raise ValueError(f"Cannot parse boolean value '{val}' for flag {flag}.")
+            else:
+                val_bool = bool(val)
+            if val_bool:
+                cmd.append(flag)
             return
         cmd.extend([flag, str(val)])
 
@@ -111,6 +125,9 @@ for fn_name, meta in sorted(functions.items()):
     add_arg("-wd", ("wd", "weight_decay"), required=True)
     add_arg("-s", "seed")
     add_arg("-ot", ("history", "observation_time"))
+    add_arg("--use-patchify", "use_patchify", bool_flag=True)
+    add_arg("--num-patches", "num_patches")
+    add_arg("--patch-agg", "patch_agg")
 
     logdir = log_root / f"{dataset}_{fn_name}"
     logdir.mkdir(parents=True, exist_ok=True)

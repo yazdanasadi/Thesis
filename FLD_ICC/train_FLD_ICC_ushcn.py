@@ -41,11 +41,11 @@ except Exception:
 # ---------------- CLI (mirrors train_FLD.py) ----------------
 p = argparse.ArgumentParser(description="IC-FLD (USHCN) training with t-PatchGNN preprocessing (no patches)")
 p.add_argument("-r", "--run_id", default=None, type=str)
-p.add_argument("-e", "--epochs", default=300, type=int)
-p.add_argument("-es", "--early-stop", default=30, type=int)
+p.add_argument("-e", "--epochs", default=1000, type=int)
+p.add_argument("-es", "--early-stop", default=200, type=int)
 p.add_argument("-bs", "--batch-size", default=64, type=int)
 p.add_argument("-lr", "--lr", default=1e-3, dest="lr", type=float, help="learning rate")
-p.add_argument("-wd", "--wd", default=0.0, dest="wd", type=float, help="weight decay")
+p.add_argument("-wd", "--wd", default=0.001, dest="wd", type=float, help="weight decay")
 p.add_argument("-s", "--seed", default=0, type=int)
 
 p.add_argument("-d", "--dataset", default="ushcn", type=str,
@@ -58,6 +58,12 @@ p.add_argument("-ed", "--embedding-dim", default=64, type=int)    # total embedd
 p.add_argument("-nh", "--num-heads", default=2, type=int)
 p.add_argument("-ld", "--latent-dim", default=64, type=int)
 p.add_argument("-dp", "--depth", default=2, type=int)
+p.add_argument("--use-patchify", action="store_true",
+               help="Aggregate time×channel memory into temporal patches before attention.")
+p.add_argument("--num-patches", type=int, default=12,
+               help="Number of temporal patches when patchify mode is active.")
+p.add_argument("--patch-agg", type=str, default="mean", choices=("mean", "sum"),
+               help="Aggregation strategy when pooling values inside a patch.")
 
 p.add_argument("--gpu", default="0", type=str)
 p.add_argument("--resume", default="", type=str, help="'auto' or path to a .pt checkpoint")
@@ -253,12 +259,13 @@ if "depth" in accepts:  kw["depth"] = args.depth
 
 MODEL = IC_FLD(**kw).to(DEVICE)
 
-# --- Enable patchify mode ---
-MODEL.use_patchify = True          # activates time×channel patch aggregation
-MODEL.num_patches = 12             # number of temporal windows (tune e.g., 6–12)
-MODEL.patch_agg = "mean"           # "mean" or "sum"
-if hasattr(MODEL, "_ensure_patch_pos"):
+# --- Configure patchify mode ---
+MODEL.use_patchify = bool(args.use_patchify)
+MODEL.num_patches = max(1, int(args.num_patches))
+MODEL.patch_agg = args.patch_agg
+if MODEL.use_patchify and hasattr(MODEL, "_ensure_patch_pos"):
     MODEL._ensure_patch_pos(MODEL.num_patches)
+print(f"[config] patchify={MODEL.use_patchify} num_patches={MODEL.num_patches} agg={MODEL.patch_agg}")
 
 # ---------------- Helpers ----------------
 def _orient_time_last(x: torch.Tensor, input_dim: int) -> torch.Tensor:
@@ -267,14 +274,30 @@ def _orient_time_last(x: torch.Tensor, input_dim: int) -> torch.Tensor:
     if x.shape[1] == input_dim:  return x.transpose(1, 2).contiguous()
     raise ValueError(f"Cannot infer feature axis from {x.shape} with D={input_dim}")
 
-def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    """NaN-robust masked MSE."""
+def _per_channel_metric(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor, mode: str = "mse") -> torch.Tensor:
+    """Per-variable averaging to match lib.evaluation."""
     y    = torch.nan_to_num(y,    nan=0.0)
     yhat = torch.nan_to_num(yhat, nan=0.0)
     m = mask.float()
-    num = (m * (y - yhat) ** 2).sum()
-    den = m.sum().clamp_min(1.0)
-    return num / den
+    diff = y - yhat
+    if mode == "mse":
+        err = (diff ** 2) * m
+    elif mode == "mae":
+        err = diff.abs() * m
+    else:
+        raise ValueError(f"Unknown metric mode: {mode}")
+    err_var_sum = err.reshape(-1, err.shape[-1]).sum(dim=0)
+    mask_count = m.reshape(-1, m.shape[-1]).sum(dim=0)
+    mask_count = mask_count.clamp_min(1e-8)
+    err_var_avg = err_var_sum / mask_count
+    n_available = (mask_count > 0).sum().clamp_min(1)
+    return err_var_avg.sum() / n_available
+
+def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    return _per_channel_metric(y, yhat, mask, mode="mse")
+
+def mae_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    return _per_channel_metric(y, yhat, mask, mode="mae")
 
 def _ushcn_safe_context(T: torch.Tensor, X: torch.Tensor, M: torch.Tensor):
     """Ensure each sample has at least one observed entry (dummy (t=0, ch=0)=0)."""
@@ -302,16 +325,20 @@ def batch_to_icfld(batch: dict, input_dim: int, device: torch.device):
 
 @torch.no_grad()
 def evaluate(loader, nbatches):
-    total = 0.0; cnt = 0.0
+    if nbatches == 0:
+        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
+    mse_vals = []
+    mae_vals = []
     for _ in range(nbatches):
         b = utils.get_next_batch(loader)
         T, X, M, TY, Y, YM = batch_to_icfld(b, INPUT_DIM, DEVICE)
         YH = MODEL(T, X, M, TY)
-        total += float(((Y - YH) ** 2 * YM).sum().item())
-        cnt   += float(YM.sum().item())
-    mse = total / max(1.0, cnt)
+        mse_vals.append(float(mse_masked(Y, YH, YM).item()))
+        mae_vals.append(float(mae_masked(Y, YH, YM).item()))
+    mse = float(np.mean(mse_vals))
     rmse = (mse + 1e-8) ** 0.5
-    return {"loss": mse, "mse": mse, "rmse": rmse}
+    mae = float(np.mean(mae_vals))
+    return {"loss": mse, "mse": mse, "rmse": rmse, "mae": mae}
 
 # ---------------- Optim / sched / TB ----------------
 optimizer = optim.AdamW(MODEL.parameters(), lr=float(args.lr), weight_decay=float(args.wd))
@@ -322,7 +349,10 @@ if args.tbon:
     from torch.utils.tensorboard import SummaryWriter
     run_name = f"ICFLD_USHCN_{int(time.time())}"
     writer = SummaryWriter(log_dir=os.path.join(args.logdir, run_name))
-    writer.add_text("config/patchify_mode", "on")
+    writer.add_text(
+        "config/patchify_mode",
+        f"{MODEL.use_patchify} (num_patches={MODEL.num_patches}, agg={MODEL.patch_agg})",
+    )
     try:
         b0 = utils.get_next_batch(data_obj["train_dataloader"])
         T0, X0, M0, TY0, _, _ = batch_to_icfld(b0, INPUT_DIM, DEVICE)
@@ -332,7 +362,7 @@ if args.tbon:
 
 # ---------------- Resume (optional) ----------------
 start_epoch = 1
-best_val = float("inf"); best_iter = 0; test_report = None
+best_val = float("inf"); best_val_mae = float("inf"); best_iter = 0; test_report = None
 if args.resume:
     if args.resume == "auto":
         pattern = str(SAVE_DIR / ("ICFLD-ushcn-*.latest.pt"))
@@ -350,10 +380,12 @@ if args.resume:
                 except: pass
             if "epoch" in ckpt:     start_epoch = int(ckpt["epoch"]) + 1
             if "best_val" in ckpt:  best_val    = float(ckpt["best_val"])
+            if "best_val_mae" in ckpt: best_val_mae = float(ckpt["best_val_mae"])
             if "best_iter" in ckpt: best_iter   = int(ckpt["best_iter"])
         print(f"[resume] loaded {load_path} (start_epoch={start_epoch}, best_val={best_val:.6f})")
 
 # ---------------- Train ----------------
+training_start_time = time.time()
 print("Starting training…")
 for epoch in range(start_epoch, args.epochs + 1):
     t0 = time.time()
@@ -373,13 +405,14 @@ for epoch in range(start_epoch, args.epochs + 1):
     val_res = evaluate(data_obj["val_dataloader"], data_obj["n_val_batches"])
 
     if val_res["mse"] < best_val:
-        best_val = val_res["mse"]; best_iter = epoch
+        best_val = val_res["mse"]; best_val_mae = val_res["mae"]; best_iter = epoch
         test_report = evaluate(data_obj["test_dataloader"], data_obj["n_test_batches"])
         torch.save({
             "state_dict": MODEL.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": epoch,
             "best_val": best_val,
+            "best_val_mae": best_val_mae,
             "best_iter": best_iter,
             "args": vars(args),
             "input_dim": INPUT_DIM,
@@ -390,6 +423,7 @@ for epoch in range(start_epoch, args.epochs + 1):
         "optimizer": optimizer.state_dict(),
         "epoch": epoch,
         "best_val": best_val,
+        "best_val_mae": best_val_mae,
         "best_iter": best_iter,
         "args": vars(args),
         "input_dim": INPUT_DIM,
@@ -399,25 +433,29 @@ for epoch in range(start_epoch, args.epochs + 1):
 
     dt = time.time() - t0
     print(f"- Epoch {epoch:03d} | train_loss(one-batch): {last_train_loss:.6f} | "
-          f"val_mse: {val_res['mse']:.6f} | val_rmse: {val_res['rmse']:.6f} | "
-          + (f"best@{best_iter} test_mse: {test_report['mse']:.6f} rmse: {test_report['rmse']:.6f} | " if test_report else "")
+          f"val_mse: {val_res['mse']:.6f} | val_rmse: {val_res['rmse']:.6f} | val_mae: {val_res['mae']:.6f} | "
+          + (f"best@{best_iter} test_mse: {test_report['mse']:.6f} rmse: {test_report['rmse']:.6f} mae: {test_report['mae']:.6f} | " if test_report else "")
           + f"time: {dt:.2f}s")
 
     if writer:
         writer.add_scalar("train/loss_one_batch", last_train_loss, epoch)
         writer.add_scalar("val/mse",  float(val_res["mse"]),  epoch)
         writer.add_scalar("val/rmse", float(val_res["rmse"]), epoch)
+        writer.add_scalar("val/mae",  float(val_res["mae"]),  epoch)
         if test_report:
             writer.add_scalar("test/mse_best",  float(test_report["mse"]),  epoch)
             writer.add_scalar("test/rmse_best", float(test_report["rmse"]), epoch)
+            writer.add_scalar("test/mae_best",  float(test_report["mae"]),  epoch)
 
     if (epoch - best_iter) >= args.early_stop:
         print(f"Early stopping at epoch {epoch} (no improvement for {args.early_stop}).")
         break
 
+total_train_time = time.time() - training_start_time
 print(f"Best val MSE: {best_val:.6f} @ epoch {best_iter}")
 print(f"Saved best:   {ckpt_best}")
 print(f"Saved latest: {ckpt_last}")
+print(f"Total training time: {total_train_time:.2f}s ({total_train_time/60:.2f} min)")
 
 # ---- write shared results row (if available) ----
 if write_result is not None:
@@ -434,15 +472,20 @@ if write_result is not None:
         "depth": args.depth,
         "seed": args.seed,
         "observation_time": args.observation_time,
+        "use_patchify": args.use_patchify,
+        "num_patches": args.num_patches,
+        "patch_agg": args.patch_agg,
     }
 
     metrics = {
         "best_epoch": best_iter,
         "val_mse_best": float(best_val),
         "val_rmse_best": float((best_val + 1e-8) ** 0.5),
+        "val_mae_best": float(best_val_mae),
         "train_loss_last_batch": last_train_loss,
         "test_mse_best": (float(test_report["mse"]) if test_report else None),
         "test_rmse_best": (float(test_report["rmse"]) if test_report else None),
+        "test_mae_best": (float(test_report["mae"]) if test_report else None),
     }
     if args.fldReport:
         fld = FLDTSDMReporter(input_dim=INPUT_DIM, device=DEVICE, model=MODEL)

@@ -14,6 +14,7 @@ from datetime import datetime
 import numpy as np
 import torch
 import torch.optim as optim
+from typing import List, Optional
 
 # ===== TIMING & LOGGING SETUP =====
 SCRIPT_START_TIME = time.time()
@@ -31,13 +32,14 @@ logger.info("="*80)
 
 # ---- project root / lib discovery ----
 HERE = Path(__file__).resolve().parent
-REPO = HERE if (HERE / "lib").exists() else HERE.parent
-sys.path.append(str(REPO))
+REPO_ROOT = HERE if (HERE / "lib").exists() else HERE.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 try:
     import lib.utils as utils
     from lib.parse_datasets import parse_datasets
 except ModuleNotFoundError:
-    sys.path.append(str(REPO / ".."))
+    sys.path.append(str(REPO_ROOT / ".."))
     import lib.utils as utils
     from lib.parse_datasets import parse_datasets
 
@@ -349,6 +351,12 @@ p.add_argument("-nh", "--num-heads", type=int, default=2)
 p.add_argument("-ld", "--latent-dim", type=int, default=64)
 p.add_argument("--depth", type=int, default=2, help="decoder depth (layers)")
 p.add_argument("--harmonics", type=int, default=2)
+p.add_argument("--use-patchify", action="store_true",
+               help="Aggregate time×channel memory into temporal patches before attention.")
+p.add_argument("--num-patches", type=int, default=12,
+               help="Number of temporal patches when patchify is enabled.")
+p.add_argument("--patch-agg", type=str, default="mean", choices=["mean", "sum"],
+               help="Aggregation mode when building patch tokens.")
 
 # residual cycle options
 p.add_argument("--use-cycle", action="store_true")
@@ -357,10 +365,10 @@ p.add_argument("--time-max-hours", type=int, default=48,
                help="un-normalized time max for cycle phases")
 
 # training hyperparams
-p.add_argument("--epochs", type=int, default=100)
-p.add_argument("--early-stop", type=int, default=10)
+p.add_argument("--epochs", type=int, default=1000)
+p.add_argument("--early-stop", type=int, default=200)
 p.add_argument("--lr", type=float, default=1e-3)
-p.add_argument("--wd", type=float, default=0.0)
+p.add_argument("--wd", type=float, default=0.001)
 p.add_argument("--seed", type=int, default=0)
 p.add_argument("--gpu", type=str, default="0")
 p.add_argument("--resume", type=str, default="", help='"" or "auto" or path to .pt')
@@ -472,24 +480,42 @@ model_create_time = time.time() - model_create_start
 logger.info(f"Model created in {model_create_time:.2f} seconds")
 logger.info(f"Model: IC-FLD(input_dim={INPUT_DIM}, latent_dim={args.latent_dim}, function={args.function}, heads={args.num_heads}, depth={model_kwargs.get('depth', 'N/A')})")
 
-# --- Enable patchify mode ---
-MODEL.use_patchify = True          # activates time×channel patch aggregation
-MODEL.num_patches = 12             # number of temporal windows (tune e.g., 6–12)
-MODEL.patch_agg = "mean"           # "mean" or "sum"
-if hasattr(MODEL, "_ensure_patch_pos"):
+# --- Configure patchify mode from CLI ---
+MODEL.use_patchify = bool(args.use_patchify)
+MODEL.num_patches = max(1, int(args.num_patches))
+MODEL.patch_agg = args.patch_agg
+if MODEL.use_patchify and hasattr(MODEL, "_ensure_patch_pos"):
     MODEL._ensure_patch_pos(MODEL.num_patches)
 
+logger.info(f"Patchify enabled: {MODEL.use_patchify} | num_patches={MODEL.num_patches} | patch_agg={MODEL.patch_agg}")
 if args.tbon and writer:
-    writer.add_text("config/patchify_mode", "on")
+    writer.add_text(
+        "config/patchify_mode",
+        f"{MODEL.use_patchify} (num_patches={MODEL.num_patches}, agg={MODEL.patch_agg})",
+    )
 
 # ---------------- Loss / utils ----------------
-def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+def _per_channel_metric(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor, mode: str = "mse") -> torch.Tensor:
     mask = mask.float()
-    return (mask * (y - yhat) ** 2).sum() / mask.sum().clamp_min(1.0)
+    diff = y - yhat
+    if mode == "mse":
+        err = (diff ** 2) * mask
+    elif mode == "mae":
+        err = diff.abs() * mask
+    else:
+        raise ValueError(f"Unknown metric mode: {mode}")
+    err_var_sum = err.reshape(-1, err.shape[-1]).sum(dim=0)
+    mask_count = mask.reshape(-1, mask.shape[-1]).sum(dim=0)
+    mask_count = mask_count.clamp_min(1e-8)
+    err_var_avg = err_var_sum / mask_count
+    n_available = (mask_count > 0).sum().clamp_min(1)
+    return err_var_avg.sum() / n_available
+
+def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    return _per_channel_metric(y, yhat, mask, mode="mse")
 
 def mae_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    mask = mask.float()
-    return (mask * (y - yhat).abs()).sum() / mask.sum().clamp_min(1.0)
+    return _per_channel_metric(y, yhat, mask, mode="mae")
 
 def batch_to_icfld(batch, input_dim, device, eps: float = 1e-8):
     obs_tp = batch["observed_tp"].to(device)        # [B, Lo]
@@ -510,6 +536,9 @@ def batch_to_icfld(batch, input_dim, device, eps: float = 1e-8):
     y_mask = y_mask * future_ok.unsqueeze(-1)                  # [B, Ly, D]
 
     return obs_tp, obs_x, obs_m, tp_pred, y, y_mask
+
+def _safe_mean(values):
+    return float(sum(values) / len(values)) if values else 0.0
 
 # ---------------- Optimizer / scheduler ----------------
 optimizer = optim.AdamW(MODEL.parameters(), lr=args.lr, weight_decay=args.wd)
@@ -596,7 +625,10 @@ if args.resume:
 
 # ---------------- Eval helper ----------------
 def evaluate(loader, nb):
-    total = 0.0; total_abs = 0.0; cnt = 0.0
+    if nb == 0:
+        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
+    mse_vals = []
+    mae_vals = []
     for _ in range(nb):
         b = utils.get_next_batch(loader)
         T, X, M, TY, Y, YM = batch_to_icfld(b, INPUT_DIM, DEVICE)
@@ -605,13 +637,13 @@ def evaluate(loader, nb):
                 print("[warn] empty-target batch (all TY <= last observed); skipping.")
                 continue
             YH = MODEL(T, X, M, TY, denorm_time_max=(args.time_max_hours if args.use_cycle else None))
-        diff = Y - YH
-        total += float((YM * (diff) ** 2).sum().item())
-        total_abs += float((YM * diff.abs()).sum().item())
-        cnt   += float(YM.sum().item())
-    mse = total / max(1.0, cnt)
+        mse_vals.append(float(mse_masked(Y, YH, YM).item()))
+        mae_vals.append(float(mae_masked(Y, YH, YM).item()))
+    if not mse_vals:
+        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
+    mse = float(np.mean(mse_vals))
     rmse = (mse + 1e-8) ** 0.5
-    mae = total_abs / max(1.0, cnt)
+    mae = float(np.mean(mae_vals))
     return {"loss": mse, "mse": mse, "rmse": rmse, "mae": mae}
 
 # ---------------- Train loop ----------------
@@ -621,18 +653,60 @@ logger.info(f"Epochs: {args.epochs}, Early Stop: {args.early_stop}, Batch Size: 
 logger.info(f"Learning Rate: {args.lr}, Weight Decay: {args.wd}")
 logger.info("="*80)
 training_start_time = time.time()
+epoch_times_ms: List[float] = []
+run_mem_density: List[float] = []
+run_mem_active: List[float] = []
+run_attn_entropy: List[float] = []
+run_attn_maxprob: List[float] = []
+last_tokens_total: Optional[int] = None
 for epoch in range(start_epoch, args.epochs + 1):
     st = time.time()
     MODEL.train()
+    epoch_mem_density: List[float] = []
+    epoch_mem_active: List[float] = []
+    epoch_attn_entropy: List[float] = []
+    epoch_attn_maxprob: List[float] = []
     for _ in range(num_train_batches):
         optimizer.zero_grad(set_to_none=True)
         batch = utils.get_next_batch(data_obj["train_dataloader"])
         T, X, M, TY, Y, YM = batch_to_icfld(batch, INPUT_DIM, DEVICE)
         YH = MODEL(T, X, M, TY, denorm_time_max=(args.time_max_hours if args.use_cycle else None))
+        mem_stats = getattr(MODEL, "latest_memory_stats", None)
+        if mem_stats:
+            last_tokens_total = mem_stats.get("tokens_total", last_tokens_total)
+            if "mask_density_mean" in mem_stats:
+                epoch_mem_density.append(mem_stats["mask_density_mean"])
+            if "tokens_active_mean" in mem_stats:
+                epoch_mem_active.append(mem_stats["tokens_active_mean"])
+        attn_stats = getattr(MODEL.attn, "latest_stats", None)
+        if attn_stats:
+            if "entropy_mean" in attn_stats:
+                epoch_attn_entropy.append(attn_stats["entropy_mean"])
+            if "max_prob_mean" in attn_stats:
+                epoch_attn_maxprob.append(attn_stats["max_prob_mean"])
         loss = mse_masked(Y, YH, YM)
         loss.backward()
         optimizer.step()
         last_train_loss = float(loss.item())
+
+    mem_density_mean = _safe_mean(epoch_mem_density)
+    mem_active_mean = _safe_mean(epoch_mem_active)
+    attn_entropy_mean = _safe_mean(epoch_attn_entropy)
+    attn_maxprob_mean = _safe_mean(epoch_attn_maxprob)
+    run_mem_density.append(mem_density_mean)
+    run_mem_active.append(mem_active_mean)
+    run_attn_entropy.append(attn_entropy_mean)
+    run_attn_maxprob.append(attn_maxprob_mean)
+    logger.info(
+        f"[epoch {epoch:03d}] tokens_total={last_tokens_total}, "
+        f"mask_density={mem_density_mean:.4f}, active_tokens={mem_active_mean:.2f}, "
+        f"attn_entropy={attn_entropy_mean:.4f}, attn_max_prob={attn_maxprob_mean:.4f}"
+    )
+    if args.tbon and writer:
+        writer.add_scalar("diag/mask_density", mem_density_mean, epoch)
+        writer.add_scalar("diag/active_tokens", mem_active_mean, epoch)
+        writer.add_scalar("diag/attn_entropy", attn_entropy_mean, epoch)
+        writer.add_scalar("diag/attn_max_prob", attn_maxprob_mean, epoch)
 
     MODEL.eval()
     val_res  = evaluate(data_obj["val_dataloader"], data_obj["n_val_batches"])
@@ -665,6 +739,8 @@ for epoch in range(start_epoch, args.epochs + 1):
     scheduler.step(val_res["loss"])
 
     dt = time.time() - st
+    epoch_ms = dt * 1000.0
+    epoch_times_ms.append(epoch_ms)
     print(
         f"- Epoch {epoch:03d} | train_loss(one-batch): {loss.item():.6f} | "
         f"val_loss: {val_res['loss']:.6f} | val_mse: {val_res['mse']:.6f} | val_rmse: {val_res['rmse']:.6f} | val_mae: {val_res['mae']:.6f} | "
@@ -673,7 +749,7 @@ for epoch in range(start_epoch, args.epochs + 1):
             f"mse: {test_report['mse']:.6f} rmse: {test_report['rmse']:.6f} mae: {test_report['mae']:.6f} | "
             if test_report else ""
         )
-        + f"time: {dt:.2f}s"
+        + f"time: {dt:.2f}s ({epoch_ms:.1f} ms)"
     )
 
     if args.tbon and writer:
@@ -683,6 +759,7 @@ for epoch in range(start_epoch, args.epochs + 1):
         writer.add_scalar("val/mse", float(val_res["mse"]), epoch)
         writer.add_scalar("val/rmse", float(val_res["rmse"]), epoch)
         writer.add_scalar("val/mae", float(val_res["mae"]), epoch)
+        writer.add_scalar("diag/epoch_time_ms", epoch_ms, epoch)
         if args.tbgraph and epoch == 1:
             try:
                 dummy_b = utils.get_next_batch(data_obj["train_dataloader"])
@@ -702,9 +779,13 @@ for epoch in range(start_epoch, args.epochs + 1):
         break
 
 training_duration = time.time() - training_start_time
+training_duration_ms = training_duration * 1000.0
 logger.info("="*80)
 logger.info("TRAINING LOOP COMPLETED")
-logger.info(f"Training duration: {training_duration:.2f} seconds ({training_duration/60:.2f} minutes)")
+logger.info(
+    f"Training duration: {training_duration:.2f} seconds "
+    f"({training_duration/60:.2f} minutes / {training_duration_ms:.0f} ms)"
+)
 logger.info(f"Best epoch: {best_iter}, Best val MSE: {best_val:.6f}")
 logger.info("="*80)
 
@@ -732,12 +813,29 @@ if test_report:
     )
 
 # ---------------- Result metrics ----------------
+avg_epoch_ms = _safe_mean(epoch_times_ms)
+last_epoch_ms = epoch_times_ms[-1] if epoch_times_ms else None
+avg_mem_density = _safe_mean(run_mem_density)
+avg_mem_active = _safe_mean(run_mem_active)
+avg_attn_entropy = _safe_mean(run_attn_entropy)
+avg_attn_maxprob = _safe_mean(run_attn_maxprob)
+
 metrics = {
     "best_epoch": int(best_iter),
     "val_mse_best": float(best_val) if math.isfinite(best_val) else None,
     "val_rmse_best": float(math.sqrt(best_val)) if math.isfinite(best_val) else None,
     "val_mae_best": float(best_val_mae) if math.isfinite(best_val_mae) else None,
     "train_loss_last_batch": float(last_train_loss) if last_train_loss is not None else None,
+    "config_use_patchify": int(MODEL.use_patchify),
+    "config_num_patches": int(MODEL.num_patches if MODEL.use_patchify else 0),
+    "config_patch_agg": MODEL.patch_agg,
+    "epoch_time_ms_avg": float(avg_epoch_ms),
+    "epoch_time_ms_last": float(last_epoch_ms) if last_epoch_ms is not None else None,
+    "run_time_ms": float(training_duration_ms),
+    "memory_density_mean": float(avg_mem_density),
+    "memory_active_tokens_mean": float(avg_mem_active),
+    "attn_entropy_mean": float(avg_attn_entropy),
+    "attn_max_prob_mean": float(avg_attn_maxprob),
 }
 
 if test_report:
@@ -769,6 +867,9 @@ if write_result is not None:
         "time_max_hours": args.time_max_hours,
         "seed": args.seed,
         "observation_time": args.observation_time,
+        "use_patchify": args.use_patchify,
+        "num_patches": args.num_patches,
+        "patch_agg": args.patch_agg,
     }
     metrics_to_log = dict(metrics)
 

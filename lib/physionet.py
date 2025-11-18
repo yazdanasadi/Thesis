@@ -314,6 +314,14 @@ def patch_variable_time_collate_fn(batch, args, device = torch.device("cpu"), da
 	predicted_tp = []
 	predicted_data = []
 	predicted_mask = [] 
+	pred_window = getattr(args, "pred_window", None)
+	log_forecast_stats = getattr(args, "log_forecast_stats", False)
+	forecast_log_limit = getattr(args, "forecast_log_limit", 3)
+	if not hasattr(args, "_forecast_log_count"):
+		args._forecast_log_count = 0
+	future_lengths = []
+	future_spans = []
+
 	for b, (record_id, tt, vals, mask) in enumerate(batch):
 		indices = inverse_indices[offset:offset+len(tt)]
 		offset += len(tt)
@@ -321,9 +329,38 @@ def patch_variable_time_collate_fn(batch, args, device = torch.device("cpu"), da
 		combined_mask[b, indices] = mask
 
 		tmp_n_observed_tp = torch.lt(tt, args.history).sum()
-		predicted_tp.append(tt[tmp_n_observed_tp:])
-		predicted_data.append(vals[tmp_n_observed_tp:])
-		predicted_mask.append(mask[tmp_n_observed_tp:])
+		future_tt = tt[tmp_n_observed_tp:]
+		future_vals = vals[tmp_n_observed_tp:]
+		future_mask = mask[tmp_n_observed_tp:]
+
+		if pred_window is not None:
+			future_horizon = args.history + pred_window
+			valid_future = torch.lt(future_tt, future_horizon)
+			future_tt = future_tt[valid_future]
+			future_vals = future_vals[valid_future]
+			future_mask = future_mask[valid_future]
+
+		if log_forecast_stats and args._forecast_log_count < forecast_log_limit:
+			future_lengths.append(len(future_tt))
+			if len(future_tt) > 0:
+				future_spans.append(float(future_tt[-1] - args.history))
+			else:
+				future_spans.append(0.0)
+
+		predicted_tp.append(future_tt)
+		predicted_data.append(future_vals)
+		predicted_mask.append(future_mask)
+
+	if log_forecast_stats and args._forecast_log_count < forecast_log_limit:
+		args._forecast_log_count += 1
+		if len(future_lengths) > 0:
+			lengths_tensor = torch.tensor(future_lengths, dtype=torch.float32)
+			spans_tensor = torch.tensor(future_spans, dtype=torch.float32)
+			print(f"[collate-stats:{args.dataset}] future_len mean={lengths_tensor.mean():.2f} "
+				  f"min={lengths_tensor.min().item()} max={lengths_tensor.max().item()} | "
+				  f"span_mean={spans_tensor.mean():.2f}h")
+		else:
+			print(f"[collate-stats:{args.dataset}] no future samples in logged batch.")
 
 	combined_tt = combined_tt[:n_observed_tp]
 	combined_vals = combined_vals[:, :n_observed_tp]
@@ -376,15 +413,52 @@ def variable_time_collate_fn(batch, args, device = torch.device("cpu"), data_typ
 	predicted_data = []
 	predicted_mask = [] 
 
+	pred_window = getattr(args, "pred_window", None)
+	log_forecast_stats = getattr(args, "log_forecast_stats", False)
+	forecast_log_limit = getattr(args, "forecast_log_limit", 3)
+	if not hasattr(args, "_forecast_log_count"):
+		args._forecast_log_count = 0
+	future_lengths = []
+	future_spans = []
+
 	for b, (record_id, tt, vals, mask) in enumerate(batch):
 		n_observed_tp = torch.lt(tt, args.history).sum()
 		observed_tp.append(tt[:n_observed_tp])
 		observed_data.append(vals[:n_observed_tp])
 		observed_mask.append(mask[:n_observed_tp])
 		
-		predicted_tp.append(tt[n_observed_tp:])
-		predicted_data.append(vals[n_observed_tp:])
-		predicted_mask.append(mask[n_observed_tp:])
+		future_tt = tt[n_observed_tp:]
+		future_vals = vals[n_observed_tp:]
+		future_mask = mask[n_observed_tp:]
+
+		if pred_window is not None:
+			future_horizon = args.history + pred_window
+			valid_future = torch.lt(future_tt, future_horizon)
+			future_tt = future_tt[valid_future]
+			future_vals = future_vals[valid_future]
+			future_mask = future_mask[valid_future]
+
+		if log_forecast_stats and args._forecast_log_count < forecast_log_limit:
+			future_lengths.append(len(future_tt))
+			if len(future_tt) > 0:
+				future_spans.append(float(future_tt[-1] - args.history))
+			else:
+				future_spans.append(0.0)
+
+		predicted_tp.append(future_tt)
+		predicted_data.append(future_vals)
+		predicted_mask.append(future_mask)
+
+	if log_forecast_stats and args._forecast_log_count < forecast_log_limit:
+		args._forecast_log_count += 1
+		if len(future_lengths) > 0:
+			lengths_tensor = torch.tensor(future_lengths, dtype=torch.float32)
+			spans_tensor = torch.tensor(future_spans, dtype=torch.float32)
+			print(f"[collate-stats:{args.dataset}] future_len mean={lengths_tensor.mean():.2f} "
+				  f"min={lengths_tensor.min().item()} max={lengths_tensor.max().item()} | "
+				  f"span_mean={spans_tensor.mean():.2f}h")
+		else:
+			print(f"[collate-stats:{args.dataset}] no future samples in logged batch.")
 
 	observed_tp = pad_sequence(observed_tp, batch_first=True)
 	observed_data = pad_sequence(observed_data, batch_first=True)

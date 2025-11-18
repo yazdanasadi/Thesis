@@ -18,6 +18,26 @@ class FLDAttention(nn.Module):
         self.Wk = nn.Linear(self.E, self.E)
         self.Wv = nn.Linear(self.E, self.E)
         self.Wo = nn.Linear(self.E, out_dim)
+        self.latest_stats: dict[str, float] = {}
+
+    def _record_stats(self, attn: torch.Tensor, mask: Optional[torch.Tensor]) -> None:
+        """Keep track of simple attention diagnostics for logging."""
+        with torch.no_grad():
+            probs = attn.detach()
+            coverage = 1.0
+            if mask is not None:
+                m = mask.unsqueeze(1).unsqueeze(2)  # [B,1,1,S]
+                probs = probs * m
+                denom = probs.sum(dim=-1, keepdim=True).clamp_min(1e-9)
+                probs = probs / denom
+                coverage = float(m.float().mean().cpu().item())
+            entropy = -(probs.clamp_min(1e-9).log() * probs).sum(dim=-1)
+            max_prob = probs.max(dim=-1).values
+            self.latest_stats = {
+                "entropy_mean": float(entropy.mean().cpu().item()),
+                "max_prob_mean": float(max_prob.mean().cpu().item()),
+                "coverage": float(coverage),
+            }
 
     def forward(self, Q, K, V, mask):
         """
@@ -38,6 +58,7 @@ class FLDAttention(nn.Module):
         m = mask.unsqueeze(1).unsqueeze(2)  # [B,1,1,S]
         scores = scores.masked_fill(~m, float("-inf"))
         A = F.softmax(scores, dim=-1)  # [B,h,P,S]
+        self._record_stats(A, mask)
 
         C = torch.einsum("bhps,bhsk->bhpk", A, Vp)  # [B,h,P,k]
         C = C.permute(0, 2, 1, 3).contiguous().view(B, P, self.E)  # [B,P,E]
@@ -106,6 +127,7 @@ class IC_FLD(nn.Module):
         self.num_patches = 8
         self.patch_agg = "mean"
         self.patch_pos = nn.Parameter(torch.randn(self.num_patches, self.E))
+        self.latest_memory_stats: dict[str, float] = {}
 
     # ---- helpers ----
     def _time_embed(self, tt):  # tt: [B,T] normalized to [0,1]
@@ -153,6 +175,16 @@ class IC_FLD(nn.Module):
         self.patch_pos = nn.Parameter(new_pos)
         return self.patch_pos
 
+    def _memory_stats(self, mask_flat: torch.Tensor) -> dict:
+        total = mask_flat.size(1)
+        active = mask_flat.sum(dim=1).float()
+        density = active / max(total, 1)
+        return {
+            "tokens_total": int(total),
+            "tokens_active_mean": float(active.mean().cpu().item()),
+            "mask_density_mean": float(density.mean().cpu().item()),
+        }
+
     def _build_memory(self, timesteps, X, M):
         """
         Args:
@@ -172,7 +204,7 @@ class IC_FLD(nn.Module):
             K = KV.view(B, T * C, self.E)
             V = K
             mask_flat = M.reshape(B, T * C).bool()
-            return K, V, mask_flat
+            return K, V, mask_flat, self._memory_stats(mask_flat)
 
         P = max(int(self.num_patches), 1)
         patch_pos = self._ensure_patch_pos(P)
@@ -197,7 +229,7 @@ class IC_FLD(nn.Module):
         K = patch_tokens.view(B, P * C, self.E)
         V = K
         mask_flat = patch_mask.view(B, P * C)
-        return K, V, mask_flat
+        return K, V, mask_flat, self._memory_stats(mask_flat)
 
     # ---- forward ----
     
@@ -224,7 +256,8 @@ class IC_FLD(nn.Module):
             c_in, c_base = self._cycle_baseline(tt_phys, X, M)
             X = X - c_in
 
-        K, V, mask_flat = self._build_memory(timesteps, X, M)
+        K, V, mask_flat, mem_stats = self._build_memory(timesteps, X, M)
+        self.latest_memory_stats = mem_stats
 
         # queries: one per basis (shared across batch)
         Q = self.q_basis.unsqueeze(0).expand(B, -1, -1)                             # [B,P,E]

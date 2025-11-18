@@ -45,8 +45,8 @@ from FLD import FLD
 # --------- CLI ---------
 parser = argparse.ArgumentParser(description="FLD training with t-PatchGNN preprocessing (no patches)")
 parser.add_argument("-r", "--run_id", default=None, type=str)
-parser.add_argument("-e", "--epochs", default=300, type=int)
-parser.add_argument("-es", "--early-stop", default=30, type=int)
+parser.add_argument("-e", "--epochs", default=1000, type=int)
+parser.add_argument("-es", "--early-stop", default=200, type=int)
 parser.add_argument("-bs", "--batch-size", default=64, type=int)
 parser.add_argument("-lr", "--learn-rate", default=1e-3, type=float)
 parser.add_argument("-wd", "--weight-decay", default=0.0, type=float)
@@ -129,17 +129,35 @@ def _orient_time_last(x: torch.Tensor, input_dim: int) -> torch.Tensor:
     if x.shape[1] == input_dim:  return x.transpose(1, 2).contiguous()
     raise ValueError(f"Cannot infer feature axis from {x.shape} with D={input_dim}")
 
-def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+def _per_channel_metric(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor, mode: str = "mse") -> torch.Tensor:
+    """Match lib.evaluation: average per variable, then across variables."""
     mask = mask.float()
-    return (mask * (y - yhat) ** 2).sum() / mask.sum().clamp_min(1.0)
+    diff = y - yhat
+    if mode == "mse":
+        err = (diff ** 2) * mask
+    elif mode == "mae":
+        err = diff.abs() * mask
+    else:
+        raise ValueError(f"Unknown metric mode: {mode}")
+    err_var_sum = err.reshape(-1, err.shape[-1]).sum(dim=0)
+    mask_count = mask.reshape(-1, mask.shape[-1]).sum(dim=0)
+    mask_count = mask_count.clamp_min(1e-8)
+    err_var_avg = err_var_sum / mask_count
+    n_available = (mask_count > 0).sum().clamp_min(1)
+    return err_var_avg.sum() / n_available
+
+def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    return _per_channel_metric(y, yhat, mask, mode="mse")
 
 def mae_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    mask = mask.float()
-    return (mask * (y - yhat).abs()).sum() / mask.sum().clamp_min(1.0)
+    return _per_channel_metric(y, yhat, mask, mode="mae")
 
 @torch.no_grad()
 def evaluate(model, loader, nbatches, input_dim, device):
-    total = 0.0; total_abs = 0.0; cnt = 0.0
+    if nbatches == 0:
+        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
+    mse_vals = []
+    mae_vals = []
     for _ in range(nbatches):
         b = utils.get_next_batch(loader)
         T   = b["observed_tp"].to(device)                                  # [B,L]
@@ -150,13 +168,11 @@ def evaluate(model, loader, nbatches, input_dim, device):
         YM  = _orient_time_last(b.get("mask_predicted_data",
                                torch.ones_like(Y, dtype=torch.float32)).to(device), input_dim)
         YH = model(T, X, M, TY)
-        diff = Y - YH
-        total += float(((diff) ** 2 * YM).sum().item())
-        total_abs += float((diff.abs() * YM).sum().item())
-        cnt += float(YM.sum().item())
-    mse = total / max(1.0, cnt)
+        mse_vals.append(float(mse_masked(Y, YH, YM).item()))
+        mae_vals.append(float(mae_masked(Y, YH, YM).item()))
+    mse = float(np.mean(mse_vals))
     rmse = (mse + 1e-8) ** 0.5
-    mae = total_abs / max(1.0, cnt)
+    mae = float(np.mean(mae_vals))
     return {"loss": mse, "mse": mse, "rmse": rmse, "mae": mae}
 
 # --------- Optim / sched ---------
