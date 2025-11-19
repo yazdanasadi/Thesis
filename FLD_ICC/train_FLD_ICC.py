@@ -38,10 +38,12 @@ if str(REPO_ROOT) not in sys.path:
 try:
     import lib.utils as utils
     from lib.parse_datasets import parse_datasets
+    from lib import evaluation
 except ModuleNotFoundError:
     sys.path.append(str(REPO_ROOT / ".."))
     import lib.utils as utils
     from lib.parse_datasets import parse_datasets
+    from lib import evaluation
 
 # ---- import IC_FLD without triggering circulars ----
 try:
@@ -367,6 +369,7 @@ p.add_argument("--time-max-hours", type=int, default=48,
 # training hyperparams
 p.add_argument("--epochs", type=int, default=1000)
 p.add_argument("--early-stop", type=int, default=200)
+p.add_argument("--patience", type=int, default=10, help="patience for early stop")
 p.add_argument("--lr", type=float, default=1e-3)
 p.add_argument("--wd", type=float, default=0.001)
 p.add_argument("--seed", type=int, default=0)
@@ -378,19 +381,17 @@ p.add_argument("--tbon", action="store_true")
 p.add_argument("--logdir", type=str, default="runs")
 p.add_argument("--tbgraph", action="store_true")
 
-# --- PATCH: FLD/TSDM reporting flags ---
-p.add_argument("--fldReport", action="store_true",
-               help="Report FLD-style TSDM metrics (75-3, 75-25, 50-50) at the end.")
-p.add_argument("--fldTasks", type=str, default="75-3,75-25,50-50",
-               help='Comma-separated tasks from {"75-3","75-25","50-50"}.')
-p.add_argument("--fldScale", type=str, default="zscore",
-               choices=["zscore", "minmax", "none", "auto"],
-               help="Scale used for FLD report: zscore (TSDM default), minmax, none, or auto.")
-p.add_argument("--fldStatsFrom", type=str, default="obs+targets",
-               choices=["obs", "obs+targets"],
-               help="Which training values to estimate scaling from (observations only, or obs+targets).")
+
+def _flag_in_argv(flag: str) -> bool:
+    return any(arg == flag or arg.startswith(f"{flag}=") for arg in sys.argv)
+
 
 args = p.parse_args()
+
+if not _flag_in_argv("--patience"):
+    args.patience = args.early_stop
+else:
+    args.early_stop = args.patience
 
 # ---------------- Setup ----------------
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
@@ -428,7 +429,7 @@ pd_args = SimpleNamespace(
     state="def",
     n=args.n,
     hop=1, nhead=1, tf_layer=1, nlayer=1,
-    epoch=args.epochs, patience=args.early_stop,
+    epoch=args.epochs, patience=args.patience,
     history=int(args.observation_time),
     patch_size=8.0, stride=8.0,
     logmode="a",
@@ -494,29 +495,9 @@ if args.tbon and writer:
         f"{MODEL.use_patchify} (num_patches={MODEL.num_patches}, agg={MODEL.patch_agg})",
     )
 
-# ---------------- Loss / utils ----------------
-def _per_channel_metric(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor, mode: str = "mse") -> torch.Tensor:
-    mask = mask.float()
-    diff = y - yhat
-    if mode == "mse":
-        err = (diff ** 2) * mask
-    elif mode == "mae":
-        err = diff.abs() * mask
-    else:
-        raise ValueError(f"Unknown metric mode: {mode}")
-    err_var_sum = err.reshape(-1, err.shape[-1]).sum(dim=0)
-    mask_count = mask.reshape(-1, mask.shape[-1]).sum(dim=0)
-    mask_count = mask_count.clamp_min(1e-8)
-    err_var_avg = err_var_sum / mask_count
-    n_available = (mask_count > 0).sum().clamp_min(1)
-    return err_var_avg.sum() / n_available
+MODEL.forecast_denorm_time_max = args.time_max_hours if args.use_cycle else None
 
-def mse_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    return _per_channel_metric(y, yhat, mask, mode="mse")
-
-def mae_masked(y: torch.Tensor, yhat: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    return _per_channel_metric(y, yhat, mask, mode="mae")
-
+# ---------------- Utils ----------------
 def batch_to_icfld(batch, input_dim, device, eps: float = 1e-8):
     obs_tp = batch["observed_tp"].to(device)        # [B, Lo]
     obs_x  = batch["observed_data"].to(device)      # [B, Lo, D] or [B, D, Lo]
@@ -623,33 +604,10 @@ if args.resume:
     elif args.resume:
         print(f"[resume] path not found: {load_path} (starting fresh)")
 
-# ---------------- Eval helper ----------------
-def evaluate(loader, nb):
-    if nb == 0:
-        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
-    mse_vals = []
-    mae_vals = []
-    for _ in range(nb):
-        b = utils.get_next_batch(loader)
-        T, X, M, TY, Y, YM = batch_to_icfld(b, INPUT_DIM, DEVICE)
-        with torch.no_grad():
-            if YM.sum() == 0:
-                print("[warn] empty-target batch (all TY <= last observed); skipping.")
-                continue
-            YH = MODEL(T, X, M, TY, denorm_time_max=(args.time_max_hours if args.use_cycle else None))
-        mse_vals.append(float(mse_masked(Y, YH, YM).item()))
-        mae_vals.append(float(mae_masked(Y, YH, YM).item()))
-    if not mse_vals:
-        return {"loss": float("inf"), "mse": float("inf"), "rmse": float("inf"), "mae": float("inf")}
-    mse = float(np.mean(mse_vals))
-    rmse = (mse + 1e-8) ** 0.5
-    mae = float(np.mean(mae_vals))
-    return {"loss": mse, "mse": mse, "rmse": rmse, "mae": mae}
-
 # ---------------- Train loop ----------------
 logger.info("="*80)
 logger.info("TRAINING LOOP STARTED")
-logger.info(f"Epochs: {args.epochs}, Early Stop: {args.early_stop}, Batch Size: {args.batch_size}")
+logger.info(f"Epochs: {args.epochs}, Patience: {args.patience}, Batch Size: {args.batch_size}")
 logger.info(f"Learning Rate: {args.lr}, Weight Decay: {args.wd}")
 logger.info("="*80)
 training_start_time = time.time()
@@ -659,6 +617,8 @@ run_mem_active: List[float] = []
 run_attn_entropy: List[float] = []
 run_attn_maxprob: List[float] = []
 last_tokens_total: Optional[int] = None
+last_train_metrics: Optional[dict] = None
+best_val_mape = float("inf")
 for epoch in range(start_epoch, args.epochs + 1):
     st = time.time()
     MODEL.train()
@@ -668,9 +628,14 @@ for epoch in range(start_epoch, args.epochs + 1):
     epoch_attn_maxprob: List[float] = []
     for _ in range(num_train_batches):
         optimizer.zero_grad(set_to_none=True)
-        batch = utils.get_next_batch(data_obj["train_dataloader"])
-        T, X, M, TY, Y, YM = batch_to_icfld(batch, INPUT_DIM, DEVICE)
-        YH = MODEL(T, X, M, TY, denorm_time_max=(args.time_max_hours if args.use_cycle else None))
+        batch_dict = utils.get_next_batch(data_obj["train_dataloader"])
+        train_res = evaluation.compute_all_losses(MODEL, batch_dict)
+        loss = train_res["loss"]
+        loss.backward()
+        optimizer.step()
+        last_train_loss = float(loss.item())
+        last_train_metrics = train_res
+
         mem_stats = getattr(MODEL, "latest_memory_stats", None)
         if mem_stats:
             last_tokens_total = mem_stats.get("tokens_total", last_tokens_total)
@@ -684,10 +649,6 @@ for epoch in range(start_epoch, args.epochs + 1):
                 epoch_attn_entropy.append(attn_stats["entropy_mean"])
             if "max_prob_mean" in attn_stats:
                 epoch_attn_maxprob.append(attn_stats["max_prob_mean"])
-        loss = mse_masked(Y, YH, YM)
-        loss.backward()
-        optimizer.step()
-        last_train_loss = float(loss.item())
 
     mem_density_mean = _safe_mean(epoch_mem_density)
     mem_active_mean = _safe_mean(epoch_mem_active)
@@ -697,6 +658,7 @@ for epoch in range(start_epoch, args.epochs + 1):
     run_mem_active.append(mem_active_mean)
     run_attn_entropy.append(attn_entropy_mean)
     run_attn_maxprob.append(attn_maxprob_mean)
+
     logger.info(
         f"[epoch {epoch:03d}] tokens_total={last_tokens_total}, "
         f"mask_density={mem_density_mean:.4f}, active_tokens={mem_active_mean:.2f}, "
@@ -709,61 +671,98 @@ for epoch in range(start_epoch, args.epochs + 1):
         writer.add_scalar("diag/attn_max_prob", attn_maxprob_mean, epoch)
 
     MODEL.eval()
-    val_res  = evaluate(data_obj["val_dataloader"], data_obj["n_val_batches"])
+    with torch.no_grad():
+        val_res = evaluation.evaluation(MODEL, data_obj["val_dataloader"], data_obj["n_val_batches"])
+        if val_res["mse"] < best_val:
+            best_val = val_res["mse"]
+            best_val_mae = val_res["mae"]
+            best_val_mape = val_res["mape"]
+            best_iter = epoch
+            test_report = evaluation.evaluation(
+                MODEL, data_obj["test_dataloader"], data_obj["n_test_batches"]
+            )
+            torch.save(
+                {
+                    "state_dict": MODEL.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "epoch": epoch,
+                    "best_val": best_val,
+                    "best_val_mae": best_val_mae,
+                    "best_val_mape": best_val_mape,
+                    "best_iter": best_iter,
+                    "args": vars(args),
+                    "input_dim": INPUT_DIM,
+                },
+                ckpt_best,
+            )
 
-    if val_res["mse"] < best_val:
-        best_val = val_res["mse"]; best_val_mae = val_res["mae"]; best_iter = epoch
-        test_report = evaluate(data_obj["test_dataloader"], data_obj["n_test_batches"])
-        torch.save({
+    torch.save(
+        {
             "state_dict": MODEL.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": epoch,
             "best_val": best_val,
             "best_val_mae": best_val_mae,
+            "best_val_mape": best_val_mape,
             "best_iter": best_iter,
             "args": vars(args),
             "input_dim": INPUT_DIM,
-        }, ckpt_best)
-
-    torch.save({
-        "state_dict": MODEL.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "epoch": epoch,
-        "best_val": best_val,
-        "best_val_mae": best_val_mae,
-        "best_iter": best_iter,
-        "args": vars(args),
-        "input_dim": INPUT_DIM,
-    }, ckpt_last)
+        },
+        ckpt_last,
+    )
 
     scheduler.step(val_res["loss"])
 
     dt = time.time() - st
     epoch_ms = dt * 1000.0
     epoch_times_ms.append(epoch_ms)
-    print(
-        f"- Epoch {epoch:03d} | train_loss(one-batch): {loss.item():.6f} | "
-        f"val_loss: {val_res['loss']:.6f} | val_mse: {val_res['mse']:.6f} | val_rmse: {val_res['rmse']:.6f} | val_mae: {val_res['mae']:.6f} | "
-        + (
-            f"best@{best_iter} test_loss: {test_report['loss']:.6f} "
-            f"mse: {test_report['mse']:.6f} rmse: {test_report['rmse']:.6f} mae: {test_report['mae']:.6f} | "
-            if test_report else ""
-        )
-        + f"time: {dt:.2f}s ({epoch_ms:.1f} ms)"
+    val_mape_pct = val_res["mape"] * 100.0
+    train_loss_display = last_train_loss if last_train_loss is not None else float("nan")
+    logger.info(f"- Epoch {epoch:03d}, ExpID {experiment_id}")
+    logger.info(f"Train - Loss (one batch): {train_loss_display:.5f}")
+    logger.info(
+        "Val - Loss, MSE, RMSE, MAE, MAPE: "
+        f"{val_res['loss']:.5f}, {val_res['mse']:.5f}, {val_res['rmse']:.5f}, {val_res['mae']:.5f}, {val_mape_pct:.2f}%"
     )
+    if test_report:
+        logger.info(
+            "Test - Best epoch, Loss, MSE, RMSE, MAE, MAPE: "
+            f"{best_iter}, {test_report['loss']:.5f}, {test_report['mse']:.5f}, "
+            f"{test_report['rmse']:.5f}, {test_report['mae']:.5f}, {test_report['mape'] * 100.0:.2f}%"
+        )
+    logger.info(f"Time spent: {dt:.2f}s")
+
+    summary = (
+        f"- Epoch {epoch:03d} | train_loss(one-batch): {train_loss_display:.6f} | "
+        f"val_loss: {val_res['loss']:.6f} | val_mse: {val_res['mse']:.6f} | "
+        f"val_rmse: {val_res['rmse']:.6f} | val_mae: {val_res['mae']:.6f} | val_mape: {val_mape_pct:.2f}% | "
+    )
+    if test_report:
+        summary += (
+            f"best@{best_iter} test_loss: {test_report['loss']:.6f} "
+            f"mse: {test_report['mse']:.6f} rmse: {test_report['rmse']:.6f} "
+            f"mae: {test_report['mae']:.6f} mape: {test_report['mape'] * 100.0:.2f}% | "
+        )
+    summary += f"time: {dt:.2f}s ({epoch_ms:.1f} ms)"
+    print(summary)
 
     if args.tbon and writer:
         if last_train_loss is not None:
-            writer.add_scalar("loss/train_last_batch", last_train_loss, epoch)
+            writer.add_scalar("train/loss_one_batch", last_train_loss, epoch)
+        if last_train_metrics is not None:
+            writer.add_scalar("train/mse_one_batch", last_train_metrics["mse"], epoch)
+            writer.add_scalar("train/rmse_one_batch", last_train_metrics["rmse"], epoch)
+            writer.add_scalar("train/mae_one_batch", last_train_metrics["mae"], epoch)
         writer.add_scalar("val/loss", float(val_res["loss"]), epoch)
         writer.add_scalar("val/mse", float(val_res["mse"]), epoch)
         writer.add_scalar("val/rmse", float(val_res["rmse"]), epoch)
         writer.add_scalar("val/mae", float(val_res["mae"]), epoch)
+        writer.add_scalar("val/mape", float(val_res["mape"]), epoch)
         writer.add_scalar("diag/epoch_time_ms", epoch_ms, epoch)
         if args.tbgraph and epoch == 1:
             try:
                 dummy_b = utils.get_next_batch(data_obj["train_dataloader"])
-                T, X, M, TY, Y, YM = batch_to_icfld(dummy_b, INPUT_DIM, DEVICE)
+                T, X, M, TY, _, _ = batch_to_icfld(dummy_b, INPUT_DIM, DEVICE)
                 writer.add_graph(MODEL, (T, X, M, TY))
             except Exception as e:
                 print(f"[tbgraph] skipped: {e}")
@@ -772,10 +771,11 @@ for epoch in range(start_epoch, args.epochs + 1):
             writer.add_scalar("test/mse_best", float(test_report["mse"]), epoch)
             writer.add_scalar("test/rmse_best", float(test_report["rmse"]), epoch)
             writer.add_scalar("test/mae_best", float(test_report["mae"]), epoch)
+            writer.add_scalar("test/mape_best", float(test_report["mape"]), epoch)
 
-    if (epoch - best_iter) >= args.early_stop:
-        print(f"Early stopping at epoch {epoch} (no improvement for {args.early_stop} epochs).")
-        logger.info(f"Early stopping triggered at epoch {epoch} (no improvement for {args.early_stop} epochs)")
+    if (epoch - best_iter) >= args.patience:
+        print(f"Early stopping at epoch {epoch} (no improvement for {args.patience} epochs).")
+        logger.info(f"Early stopping triggered at epoch {epoch} (no improvement for {args.patience} epochs)")
         break
 
 training_duration = time.time() - training_start_time
@@ -793,10 +793,9 @@ logger.info("="*80)
 if last_train_loss is None:
     try:
         b = utils.get_next_batch(data_obj["train_dataloader"])
-        T, X, M, TY, Y, YM = batch_to_icfld(b, INPUT_DIM, DEVICE)
         with torch.no_grad():
-            YH = MODEL(T, X, M, TY, denorm_time_max=(args.time_max_hours if args.use_cycle else None))
-        last_train_loss = float(mse_masked(Y, YH, YM).item())
+            res = evaluation.compute_all_losses(MODEL, b)
+        last_train_loss = float(res["loss"].item())
     except Exception:
         last_train_loss = None
 
@@ -809,7 +808,8 @@ if test_report:
         f"Loss: {test_report['loss']:.6f}, "
         f"MSE: {test_report['mse']:.6f}, "
         f"RMSE: {test_report['rmse']:.6f}, "
-        f"MAE: {test_report['mae']:.6f}"
+        f"MAE: {test_report['mae']:.6f}, "
+        f"MAPE: {test_report['mape'] * 100.0:.2f}%"
     )
 
 # ---------------- Result metrics ----------------
@@ -825,6 +825,7 @@ metrics = {
     "val_mse_best": float(best_val) if math.isfinite(best_val) else None,
     "val_rmse_best": float(math.sqrt(best_val)) if math.isfinite(best_val) else None,
     "val_mae_best": float(best_val_mae) if math.isfinite(best_val_mae) else None,
+    "val_mape_best": float(best_val_mape) if math.isfinite(best_val_mape) else None,
     "train_loss_last_batch": float(last_train_loss) if last_train_loss is not None else None,
     "config_use_patchify": int(MODEL.use_patchify),
     "config_num_patches": int(MODEL.num_patches if MODEL.use_patchify else 0),
@@ -844,6 +845,7 @@ if test_report:
         "test_mse_best": float(test_report["mse"]),
         "test_rmse_best": float(test_report["rmse"]),
         "test_mae_best": float(test_report["mae"]),
+        "test_mape_best": float(test_report["mape"]),
     })
 
 metrics_for_json = dict(metrics)
@@ -852,7 +854,8 @@ metrics_for_json = dict(metrics)
 if write_result is not None:
     params = {
         "epochs": args.epochs,
-        "early_stop": args.early_stop,
+        "early_stop": args.patience,
+        "patience": args.patience,
         "batch_size": args.batch_size,
         "lr": args.lr,
         "wd": args.wd,
@@ -872,18 +875,6 @@ if write_result is not None:
         "patch_agg": args.patch_agg,
     }
     metrics_to_log = dict(metrics)
-
-    # --- FLD report trigger (compute and merge into metrics, and print to console) ---
-    if args.fldReport:
-        fld_tasks = [t.strip() for t in args.fldTasks.split(",") if t.strip()]
-        fld = FLDTSDMReporter(
-            input_dim=INPUT_DIM, device=DEVICE, model=MODEL,
-            scale=args.fldScale, stats_from=args.fldStatsFrom
-        )
-        fld.discover_var_bounds(data_obj)                      # find dataset min/max
-        fld.fit_stats(data_obj["train_dataloader"], data_obj["n_train_batches"])  # fit train stats
-        fld_metrics = fld.report_all(data_obj, writer=writer, tasks=fld_tasks)    # print + TB
-        metrics_to_log.update(fld_metrics)                     # persist into CSV/Excel
 
     write_result(
         model_name="IC-FLD" + ("-RCF" if args.use_cycle else ""),

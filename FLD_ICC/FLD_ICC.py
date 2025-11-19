@@ -279,3 +279,27 @@ class IC_FLD(nn.Module):
             Y = Y + c_fut
 
         return Y
+
+    def forecasting(self, tp_to_predict, observed_data, observed_tp, observed_mask):
+        """
+        Adapter for lib.evaluation: consume tPatchGNN batch tensors and run forward pass.
+        Shapes follow lib.collate (B,L,D) with time already normalized.
+        """
+        device = self.q_basis.device
+        tp_to_predict = tp_to_predict.to(device)
+        observed_tp = observed_tp.to(device)
+        X = observed_data.to(device)
+        M = observed_mask.to(device)
+
+        if X.dim() == 3 and X.shape[1] == self.C:
+            X = X.transpose(1, 2).contiguous()
+            M = M.transpose(1, 2).contiguous()
+
+        denorm_time_max = getattr(self, "forecast_denorm_time_max", None)
+        return self(
+            observed_tp,
+            X,
+            M,
+            tp_to_predict,
+            denorm_time_max=denorm_time_max if self.residual_cycle else None,
+        )

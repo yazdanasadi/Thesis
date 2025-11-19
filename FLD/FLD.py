@@ -190,3 +190,31 @@ class FLD(nn.Module):
         else:
             raise RuntimeError("Invalid function type.")
         return self.out(x)  # [B,Ty,D]
+
+    def forecasting(
+        self,
+        tp_to_predict: torch.Tensor,
+        observed_data: torch.Tensor,
+        observed_tp: torch.Tensor,
+        observed_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Adapter used by lib.evaluation helpers.
+        Accepts tensors in tPatchGNN layout and delegates to forward().
+        """
+        device = self.query.device
+        tp_to_predict = tp_to_predict.to(device)
+        observed_tp = observed_tp.to(device)
+        X = observed_data.to(device)
+        M = observed_mask.to(device)
+
+        if X.dim() == 3 and X.shape[1] == self.input_dim:
+            X = X.transpose(1, 2).contiguous()
+            M = M.transpose(1, 2).contiguous()
+
+        return self(
+            observed_tp,
+            X,
+            M,
+            tp_to_predict,
+        )

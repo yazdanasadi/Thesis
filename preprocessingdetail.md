@@ -75,7 +75,7 @@ Because both the model inputs and the evaluation targets are min–max scaled, l
 1. **Consistency** – All models are evaluated on the same scaled targets, so cross-model comparisons are meaningful even when architectures differ.
 2. **Reconstruction** – You can recover physical units by inverting the scaling: `y_original = y_scaled * (data_max - data_min) + data_min`.
 3. **Per-variable fairness** – Because each metric averages channel-wise errors before collapsing to a scalar, datasets with sparse variables (e.g., MIMIC after 24 h) no longer look artificially worse than dense ones purely due to target counts.
-4. **Reporting choices** – If you want z-score metrics everywhere, use the `--fldReport` flag (IC-FLD/FLD) or ensure `global_mean/std` are available (tPatchGNN). Otherwise, the default logs min–max-normalized errors.
+4. **Reporting pipeline** – All trainers now rely on `lib.evaluation` for loss/metric computation, so every run logs min–max-normalized `loss/mse/rmse/mae/mape` with the same masking rules. If you need alternate scales (e.g., z-score for comparison with TSDM), convert predictions outside the trainer using the stored `data_min`, `data_max`, `global_mean`, and `global_std`.
 
 ---
 
