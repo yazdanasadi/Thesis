@@ -105,7 +105,7 @@ class IC_FLD(nn.Module):
         if self.F == "C":   self.P = 1
         elif self.F == "L": self.P = 2
         elif self.F == "Q": self.P = 3
-        elif self.F == "S": self.P = 2 * self.H  # sin & cos pairs
+        elif self.F == "S": self.P = 4  # amplitude, frequency, phase, bias
         else: raise ValueError(f"Unknown function {function}")
 
         # embeddings
@@ -143,11 +143,14 @@ class IC_FLD(nn.Module):
             Phi = torch.stack([torch.ones_like(t), t], dim=-1)
         elif self.F == "Q":
             Phi = torch.stack([torch.ones_like(t), t, t*t], dim=-1)
+        elif self.F == "S":
+            # cols = []
+            # for k in range(1, self.H+1):
+            #     cols += [torch.sin(2*math.pi*k*t), torch.cos(2*math.pi*k*t)]
+            # Phi = torch.stack(cols, dim=-1)  # [B,Ty,2H]
+            raise RuntimeError("Sinusoidal basis handled directly in forward when F == 'S'.")
         else:
-            cols = []
-            for k in range(1, self.H+1):
-                cols += [torch.sin(2*math.pi*k*t), torch.cos(2*math.pi*k*t)]
-            Phi = torch.stack(cols, dim=-1)  # [B,Ty,2H]
+            raise ValueError(f"Unknown function {self.F}")
         return Phi  # [B,Ty,P]
 
     def _cycle_baseline(self, timesteps_phys, X, M):
@@ -268,9 +271,16 @@ class IC_FLD(nn.Module):
         # per-basis, per-channel coefficients
         coeffs = self.coeff_proj(Z)                                                 # [B,P,C]
 
-        # basis at target times -> time-varying predictions
-        Phi = self._basis(y_times)                                                  # [B,Ty,P]
-        Y   = torch.einsum("btp,bpc->btc", Phi, coeffs)                             # [B,Ty,C]
+        if self.F == "S":
+            t = y_times.unsqueeze(-1)                                               # [B,Ty,1]
+            amp = coeffs[:, 0].unsqueeze(1)                                         # [B,1,C]
+            freq = coeffs[:, 1].unsqueeze(1)                                        # [B,1,C]
+            phase = coeffs[:, 2].unsqueeze(1)                                       # [B,1,C]
+            bias = coeffs[:, 3].unsqueeze(1)                                        # [B,1,C]
+            Y = amp * torch.sin(freq * t + phase) + bias                            # [B,Ty,C]
+        else:
+            Phi = self._basis(y_times)                                              # [B,Ty,P]
+            Y   = torch.einsum("btp,bpc->btc", Phi, coeffs)                         # [B,Ty,C]
 
         if self.residual_cycle:
             yt_phys = y_times * denorm_time_max
